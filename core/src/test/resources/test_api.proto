@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+option java_package = "com.avast.cactus.grpc";
+
+option java_generic_services = true;
+
+message TestApi {
+    message GetRequest {
+        repeated string names = 1;           // REQUIRED
+    }
+    
+    message GetResponse {
+        map<string, int32> results = 1;      // REQUIRED
+    }
+}
+
+service TestApiService {
+    rpc Get (TestApi.GetRequest) returns (TestApi.GetResponse) {}
+}
