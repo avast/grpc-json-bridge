@@ -1,6 +1,8 @@
 import sbt.CrossVersion
 import sbt.Keys.libraryDependencies
 
+val logger: Logger = ConsoleLogger()
+
 lazy val Versions = new {
   val gpb3Version = "3.5.0"
   val grpcVersion = "1.10.0"
@@ -59,6 +61,29 @@ lazy val commonSettings = Seq(
   testOptions += Tests.Argument(TestFrameworks.JUnit)
 )
 
+lazy val grpcGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufConfigSettings) ++ Seq(
+  PB.protocVersion := "-v350",
+  grpcExePath := xsbti.api.SafeLazy.strict {
+    val exe: File = (baseDirectory in Test).value / ".bin" / grpcExeFileName
+    if (!exe.exists) {
+      logger.info("gRPC protoc plugin (for Java) does not exist. Downloading")
+      //    IO.download(grpcExeUrl, exe)
+      IO.transfer(grpcExeUrl.openStream(), exe)
+      exe.setExecutable(true)
+    } else {
+      logger.debug("gRPC protoc plugin (for Java) exists")
+    }
+    exe
+  },
+  PB.protocOptions in Test ++= Seq(
+    s"--plugin=protoc-gen-java_rpc=${grpcExePath.value.get}",
+    s"--java_rpc_out=${(sourceManaged in Test).value.getAbsolutePath}"
+  ),
+  PB.targets in Test := Seq(
+    PB.gens.java -> (sourceManaged in Test).value
+  )
+)
+
 lazy val root = (project in file("."))
   .settings(
     name := "grpc-json-bridge",
@@ -71,6 +96,7 @@ lazy val core = (project in file("core")).settings(
   commonSettings,
   macroSettings,
   scalaSettings,
+  grpcGenSettings,
   name := "grpc-json-bridge-core",
   libraryDependencies ++= Seq(
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
@@ -78,3 +104,18 @@ lazy val core = (project in file("core")).settings(
     "io.grpc" % "grpc-services" % Versions.grpcVersion % "test"
   )
 )
+
+def grpcExeFileName: String = {
+  val os = if (scala.util.Properties.isMac) {
+    "osx-x86_64"
+  } else if (scala.util.Properties.isWin) {
+    "windows-x86_64"
+  } else {
+    "linux-x86_64"
+  }
+  s"$grpcArtifactId-${Versions.grpcVersion}-$os.exe"
+}
+
+val grpcArtifactId = "protoc-gen-grpc-java"
+val grpcExeUrl = url(s"http://repo1.maven.org/maven2/io/grpc/$grpcArtifactId/${Versions.grpcVersion}/$grpcExeFileName")
+val grpcExePath = SettingKey[xsbti.api.Lazy[File]]("grpcExePath")
