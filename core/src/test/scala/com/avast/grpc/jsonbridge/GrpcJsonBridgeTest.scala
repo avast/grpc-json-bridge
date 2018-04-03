@@ -2,12 +2,14 @@ package com.avast.grpc.jsonbridge
 
 import java.util.concurrent.{Executor, ExecutorService, Executors}
 
+import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcHeader
 import com.avast.grpc.jsonbridge.Implicits._
 import com.avast.grpc.jsonbridge.test.TestApi.{GetRequest, GetResponse}
 import com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.{TestApiServiceFutureStub, TestApiServiceImplBase}
 import com.avast.grpc.jsonbridge.test.{TestApi, TestApiServiceGrpc}
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
 import io.grpc.ManagedChannel
+import io.grpc.MethodDescriptor.MethodType
 import io.grpc.inprocess.{InProcessChannelBuilder, InProcessServerBuilder}
 import io.grpc.stub.StreamObserver
 import org.scalatest.FunSuite
@@ -41,6 +43,19 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
           // unsupported method
           case _ => None
         }
+      }
+
+      override val serviceInfo: Seq[String] = {
+        import scala.collection.JavaConverters._
+
+        new TestApiServiceImplBase() {}
+          .bindService()
+          .getMethods
+          .asScala
+          .map(_.getMethodDescriptor)
+          .filter(_.getType == MethodType.UNARY) // filter out all STREAMING methods
+          .map(_.getFullMethodName)
+          .toSeq
       }
     }
 

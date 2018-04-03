@@ -1,5 +1,6 @@
 package com.avast.grpc.jsonbridge
 
+import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcHeader
 import com.google.protobuf.Message
 import com.google.protobuf.util.JsonFormat
 import io.grpc.Metadata
@@ -7,6 +8,8 @@ import io.grpc.stub.MetadataUtils
 
 import scala.concurrent.Future
 
+/** This is trait for internal usage. You should not use it directly.
+  */
 trait GrpcJsonBridgeBase[Stub <: io.grpc.stub.AbstractStub[Stub]] {
 
   protected def newFutureStub: Stub
