@@ -2,12 +2,12 @@ import sbt.CrossVersion
 import sbt.Keys.libraryDependencies
 
 lazy val Versions = new {
-  val gpb3Version = "3.5.0"
-  val grpcVersion = "1.10.0"
+  val gpb3Version = "3.5.1"
+  val grpcVersion = "1.11.0"
 }
 
 lazy val scalaSettings = Seq(
-  scalaVersion := "2.12.4",
+  scalaVersion := "2.12.5",
   scalacOptions += "-deprecation",
   scalacOptions += "-unchecked",
   scalacOptions += "-feature"
@@ -45,14 +45,14 @@ lazy val commonSettings = Seq(
       <developers>
         <developer>
           <id>avast</id>
-          <name>Jan Kolena, Avast Software s.r.o.</name>
+          <name>Avast Software s.r.o.</name>
           <url>https://www.avast.com</url>
         </developer>
       </developers>
     ),
   libraryDependencies ++= Seq(
     "junit" % "junit" % "4.12" % "test",
-    "org.scalatest" %% "scalatest" % "3.0.4" % "test",
+    "org.scalatest" %% "scalatest" % "3.0.5" % "test",
     "com.novocode" % "junit-interface" % "0.10" % "test", // Required by sbt to execute JUnit tests
     "ch.qos.logback" % "logback-classic" % "1.2.3" % "test"
   ),
