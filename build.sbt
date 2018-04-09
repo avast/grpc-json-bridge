@@ -5,7 +5,7 @@ val logger: Logger = ConsoleLogger()
 
 lazy val Versions = new {
   val gpb3Version = "3.5.0"
-  val grpcVersion = "1.10.0"
+  val grpcVersion = "1.11.0"
 }
 
 lazy val scalaSettings = Seq(
@@ -22,7 +22,10 @@ lazy val javaSettings = Seq(
 
 lazy val macroSettings = Seq(
   addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full),
-  addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.4" cross CrossVersion.binary)
+  libraryDependencies ++= Seq(
+    "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+    "org.scala-lang" % "scala-compiler" % scalaVersion.value
+  )
 )
 
 lazy val commonSettings = Seq(
