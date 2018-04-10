@@ -64,7 +64,7 @@ lazy val commonSettings = Seq(
   testOptions += Tests.Argument(TestFrameworks.JUnit)
 )
 
-lazy val grpcGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufConfigSettings) ++ Seq(
+lazy val grpcTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufConfigSettings) ++ Seq(
   PB.protocVersion := "-v350",
   grpcExePath := xsbti.api.SafeLazy.strict {
     val exe: File = (baseDirectory in Test).value / ".bin" / grpcExeFileName
@@ -99,12 +99,13 @@ lazy val core = (project in file("core")).settings(
   commonSettings,
   macroSettings,
   scalaSettings,
-  grpcGenSettings,
+  grpcTestGenSettings,
   name := "grpc-json-bridge-core",
   libraryDependencies ++= Seq(
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
-    "io.grpc" % "grpc-services" % Versions.grpcVersion % "test"
+    "io.grpc" % "grpc-services" % Versions.grpcVersion % "test",
+    "com.avast.cactus" %% "cactus-grpc-server" % "0.10" % "test"
   )
 )
 

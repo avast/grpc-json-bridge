@@ -5,7 +5,7 @@ import io.grpc.BindableService
 
 import scala.concurrent.Future
 
-trait GrpcJsonBridge[Service <: BindableService] {
+trait GrpcJsonBridge[Service <: BindableService] extends AutoCloseable {
 
   /** Invokes method with given name, if it exists.
     *

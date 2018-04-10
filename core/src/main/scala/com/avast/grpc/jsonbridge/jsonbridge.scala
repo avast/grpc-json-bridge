@@ -3,18 +3,20 @@ package com.avast.grpc
 import java.util.concurrent.Executor
 
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
+import io.grpc.BindableService
 import io.grpc.stub.AbstractStub
-import io.grpc.{BindableService, Channel}
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.experimental.macros
+import scala.reflect.ClassTag
 
 package object jsonbridge {
 
-  implicit class DeriveBridge(val channel: Channel) extends AnyVal {
-    def createGrpcJsonBridge[GrpcServiceStub <: BindableService, GrpcClientStub <: AbstractStub[GrpcClientStub]]()(
+  implicit class DeriveBridge[GrpcServiceStub <: BindableService](val serviceStub: GrpcServiceStub) extends AnyVal {
+    def createGrpcJsonBridge[GrpcClientStub <: AbstractStub[GrpcClientStub]]()(
         implicit ec: ExecutionContext,
-        ex: Executor): GrpcJsonBridge[GrpcServiceStub] =
+        ex: Executor,
+        ct: ClassTag[GrpcServiceStub]): GrpcJsonBridge[GrpcServiceStub] =
       macro Macros.generateGrpcJsonBridge[GrpcServiceStub, GrpcClientStub]
   }
 

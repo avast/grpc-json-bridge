@@ -1,36 +1,44 @@
 package com.avast.grpc.jsonbridge
 
+import java.util.UUID
+
 import com.google.protobuf.MessageLite
 import io.grpc.BindableService
 import io.grpc.stub.AbstractStub
 
+import scala.reflect.ClassTag
 import scala.reflect.macros.blackbox
 
 class Macros(val c: blackbox.Context) {
 
   import c.universe._
 
-  def generateGrpcJsonBridge[GrpcServiceStub <: BindableService: WeakTypeTag,
-                             GrpcClientStub <: AbstractStub[GrpcClientStub]: WeakTypeTag]()(
+  def generateGrpcJsonBridge[GrpcServiceStub <: BindableService, GrpcClientStub <: AbstractStub[GrpcClientStub]: WeakTypeTag]()(
       ec: c.Tree,
-      ex: c.Tree): c.Expr[GrpcJsonBridge[GrpcServiceStub]] = {
-    val serviceType = weakTypeOf[GrpcServiceStub]
-    val clientType = weakTypeOf[GrpcClientStub]
+      ex: c.Tree,
+      ct: c.Tree): c.Expr[GrpcJsonBridge[GrpcServiceStub]] = {
 
-    val channelVar = getVariable
+    val clientType = weakTypeOf[GrpcClientStub]
+    val serviceTypeRaw = extractSymbolFromClassTag(ct)
+    val serviceType = handleCactusType(serviceTypeRaw)
+
+    val channelName = UUID.randomUUID().toString
 
     val stub = {
-      q" ${clientType.typeSymbol.owner}.newFutureStub(channel) "
+      q" ${clientType.typeSymbol.owner}.newFutureStub(clientsChannel) "
     }
 
     val methodCases = getMethodCases(serviceType)
 
     val t =
       q"""
-      new com.avast.grpc.jsonbridge.GrpcJsonBridge[$serviceType] with com.avast.grpc.jsonbridge.GrpcJsonBridgeBase[$clientType] {
+      new com.avast.grpc.jsonbridge.GrpcJsonBridge[$serviceTypeRaw] with com.avast.grpc.jsonbridge.GrpcJsonBridgeBase[$clientType] {
         import com.avast.grpc.jsonbridge._
 
-        protected val channel: io.grpc.ManagedChannel = $channelVar
+        private val serviceInstance: io.grpc.BindableService = { $getVariable }
+
+        private val clientsChannel: io.grpc.ManagedChannel = ${createClientsChannel(channelName)}
+        private val server: io.grpc.Server = ${startServer(channelName)}
 
         override protected def newFutureStub: $clientType = $stub
 
@@ -42,17 +50,11 @@ class Macros(val c: blackbox.Context) {
           }
         }
 
-        override val serviceInfo: scala.Seq[String] = {
-          import scala.collection.JavaConverters._
+        override val serviceInfo: scala.Seq[String] = ${serviceInfo(serviceType)}
 
-          new $serviceType() {}
-            .bindService()
-            .getMethods
-            .asScala
-            .map(_.getMethodDescriptor)
-            .filter(_.getType == io.grpc.MethodDescriptor.MethodType.UNARY) // filter out all STREAMING methods
-            .map(_.getFullMethodName)
-            .toSeq
+        override def close: Unit = {
+          clientsChannel.shutdownNow()
+          server.shutdownNow()
         }
       }
       """
@@ -60,10 +62,8 @@ class Macros(val c: blackbox.Context) {
     c.Expr[GrpcJsonBridge[GrpcServiceStub]](t)
   }
 
-  // TODO cactus
-
   private def getMethodCases(serviceType: c.Type): Iterable[c.Tree] = {
-    serviceType.decls
+    serviceType.members
       .collect {
         case ApiMethod(m) => m
       }
@@ -79,6 +79,49 @@ class Macros(val c: blackbox.Context) {
 
         """
       }
+  }
+
+  private def startServer(channelName: String): c.Tree = {
+    q"""
+      io.grpc.inprocess.InProcessServerBuilder
+        .forName($channelName)
+        .executor(executor)
+        .addService(serviceInstance)
+        .build
+        .start
+     """
+  }
+
+  private def createClientsChannel(channelName: String): c.Tree = {
+    q"""
+      io.grpc.inprocess.InProcessChannelBuilder
+        .forName($channelName)
+        .executor(executor)
+        .build()
+     """
+  }
+
+  private def serviceInfo(serviceType: c.Type): c.Tree = {
+    q"""{
+          import scala.collection.JavaConverters._
+
+          serviceInstance
+            .bindService()
+            .getMethods
+            .asScala
+            .map(_.getMethodDescriptor)
+            .filter(_.getType == io.grpc.MethodDescriptor.MethodType.UNARY) // filter out all STREAMING methods
+            .map(_.getFullMethodName)
+            .toSeq
+        }
+    """
+  }
+
+  private def handleCactusType(t: c.Type): c.Type = {
+    // needs to be matched by String, because the dependency on Cactus is missing (by purpose)
+    if (t.baseClasses.exists(_.fullName == "com.avast.cactus.grpc.server.GrpcService")) {
+      t.typeArgs.headOption.getOrElse(terminateWithInfo("Invalid com.avast.cactus.grpc.server.GrpcService on classpath"))
+    } else t
   }
 
   private case class ApiMethod(name: TermName, request: Type, response: Type)
@@ -125,5 +168,15 @@ class Macros(val c: blackbox.Context) {
   }
 
   private def isGpbClass(t: Type): Boolean = t.baseClasses.contains(typeOf[MessageLite].typeSymbol)
+
+  private def extractSymbolFromClassTag(ctTree: c.Tree): c.Type = {
+    import c.universe._
+
+    ctTree match {
+      case q"ClassTag.apply[$cl](${_}): ${_}" => cl.tpe
+      case q" $cl " if cl.tpe.dealias.typeConstructor == typeOf[ClassTag[_]].dealias.typeConstructor => cl.tpe.typeArgs.head
+      case t => terminateWithInfo(s"Cannot process the conversion - variable type extraction from tree '$t' failed")
+    }
+  }
 
 }
