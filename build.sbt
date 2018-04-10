@@ -55,6 +55,7 @@ lazy val commonSettings = Seq(
         </developer>
       </developers>
     ),
+  resolvers += Resolver.jcenterRepo,
   libraryDependencies ++= Seq(
     "junit" % "junit" % "4.12" % "test",
     "org.scalatest" %% "scalatest" % "3.0.4" % "test",
