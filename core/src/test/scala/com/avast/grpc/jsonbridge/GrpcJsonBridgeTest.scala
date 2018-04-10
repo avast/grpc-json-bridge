@@ -58,6 +58,8 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
 
     val service = new MyApi {
       override def get(request: MyRequest): Future[Either[Status, MyResponse]] = Future.successful {
+        assertResult(MyRequest(Seq("abc", "def")))(request)
+
         Right {
           MyResponse {
             Map(
