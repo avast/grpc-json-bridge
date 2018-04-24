@@ -1,6 +1,8 @@
 import sbt.CrossVersion
 import sbt.Keys.libraryDependencies
 
+val logger: Logger = ConsoleLogger()
+
 lazy val Versions = new {
   val gpb3Version = "3.5.1"
   val grpcVersion = "1.11.0"
@@ -20,7 +22,10 @@ lazy val javaSettings = Seq(
 
 lazy val macroSettings = Seq(
   addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full),
-  addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.4" cross CrossVersion.binary)
+  libraryDependencies ++= Seq(
+    "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+    "org.scala-lang" % "scala-compiler" % scalaVersion.value
+  )
 )
 
 lazy val commonSettings = Seq(
@@ -50,6 +55,7 @@ lazy val commonSettings = Seq(
         </developer>
       </developers>
     ),
+  resolvers += Resolver.jcenterRepo,
   libraryDependencies ++= Seq(
     "junit" % "junit" % "4.12" % "test",
     "org.scalatest" %% "scalatest" % "3.0.5" % "test",
@@ -57,6 +63,29 @@ lazy val commonSettings = Seq(
     "ch.qos.logback" % "logback-classic" % "1.2.3" % "test"
   ),
   testOptions += Tests.Argument(TestFrameworks.JUnit)
+)
+
+lazy val grpcTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufConfigSettings) ++ Seq(
+  PB.protocVersion := "-v350",
+  grpcExePath := xsbti.api.SafeLazy.strict {
+    val exe: File = (baseDirectory in Test).value / ".bin" / grpcExeFileName
+    if (!exe.exists) {
+      logger.info("gRPC protoc plugin (for Java) does not exist. Downloading")
+      //    IO.download(grpcExeUrl, exe)
+      IO.transfer(grpcExeUrl.openStream(), exe)
+      exe.setExecutable(true)
+    } else {
+      logger.debug("gRPC protoc plugin (for Java) exists")
+    }
+    exe
+  },
+  PB.protocOptions in Test ++= Seq(
+    s"--plugin=protoc-gen-java_rpc=${grpcExePath.value.get}",
+    s"--java_rpc_out=${(sourceManaged in Test).value.getAbsolutePath}"
+  ),
+  PB.targets in Test := Seq(
+    PB.gens.java -> (sourceManaged in Test).value
+  )
 )
 
 lazy val root = (project in file("."))
@@ -71,10 +100,27 @@ lazy val core = (project in file("core")).settings(
   commonSettings,
   macroSettings,
   scalaSettings,
+  grpcTestGenSettings,
   name := "grpc-json-bridge-core",
   libraryDependencies ++= Seq(
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
-    "io.grpc" % "grpc-stub" % Versions.grpcVersion % "test",
-    "io.grpc" % "grpc-services" % Versions.grpcVersion % "test"
+    "io.grpc" % "grpc-stub" % Versions.grpcVersion,
+    "io.grpc" % "grpc-services" % Versions.grpcVersion % "test",
+    "com.avast.cactus" %% "cactus-grpc-server" % "0.10" % "test"
   )
 )
+
+def grpcExeFileName: String = {
+  val os = if (scala.util.Properties.isMac) {
+    "osx-x86_64"
+  } else if (scala.util.Properties.isWin) {
+    "windows-x86_64"
+  } else {
+    "linux-x86_64"
+  }
+  s"$grpcArtifactId-${Versions.grpcVersion}-$os.exe"
+}
+
+val grpcArtifactId = "protoc-gen-grpc-java"
+val grpcExeUrl = url(s"http://repo1.maven.org/maven2/io/grpc/$grpcArtifactId/${Versions.grpcVersion}/$grpcExeFileName")
+val grpcExePath = SettingKey[xsbti.api.Lazy[File]]("grpcExePath")
