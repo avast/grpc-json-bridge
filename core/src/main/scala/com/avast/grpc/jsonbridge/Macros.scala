@@ -32,25 +32,35 @@ class Macros(val c: blackbox.Context) {
 
     val t =
       q"""
-      new com.avast.grpc.jsonbridge.GrpcJsonBridge[$serviceTypeRaw] with com.avast.grpc.jsonbridge.GrpcJsonBridgeBase[$clientType] {
-        import com.avast.grpc.jsonbridge._
+      new _root_.com.avast.grpc.jsonbridge.GrpcJsonBridge[$serviceTypeRaw] with _root_.com.avast.grpc.jsonbridge.GrpcJsonBridgeBase[$clientType] {
+        import _root_.com.avast.grpc.jsonbridge._
+        import _root_.cats.instances.future._
+        import _root_.cats.data._
 
-        private val serviceInstance: io.grpc.BindableService = { $getVariable }
+        private val serviceInstance: _root_.io.grpc.BindableService = { $getVariable }
 
-        private val clientsChannel: io.grpc.ManagedChannel = ${createClientsChannel(channelName)}
-        private val server: io.grpc.Server = ${startServer(channelName)}
+        private val clientsChannel: _root_.io.grpc.ManagedChannel = ${createClientsChannel(channelName)}
+        private val server: _root_.io.grpc.Server = ${startServer(channelName)}
 
         override protected def newFutureStub: $clientType = $stub
 
-        override def invokeGrpcMethod(name: String, json: String, headers: scala.Seq[com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcHeader]): scala.Option[scala.concurrent.Future[String]] = {
-          name match {
-            case ..$methodCases
-            // unsupported method
-            case _ => scala.None
+        override def invokeGrpcMethod(name: String,
+                                      json: => String,
+                                      headers: => _root_.scala.Seq[com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcHeader]): scala.concurrent.Future[_root_.scala.Either[_root_.io.grpc.Status, String]] = {
+          try {
+            name match {
+              case ..$methodCases
+              // unsupported method
+              case _ => scala.concurrent.Future.successful(_root_.scala.Left(_root_.io.grpc.Status.NOT_FOUND))
+            }
+          } catch {
+            case _root_.scala.util.control.NonFatal(e) => scala.concurrent.Future.successful(_root_.scala.Left(_root_.io.grpc.Status.INTERNAL))
           }
         }
 
-        override val serviceInfo: scala.Seq[String] = ${serviceInfo(serviceType)}
+        override val serviceInfo: _root_.scala.Seq[String] = ${serviceInfo(serviceType)}
+
+        override val serviceName: String = ${serviceType.toString}
 
         override def close: Unit = {
           clientsChannel.shutdownNow()
@@ -71,19 +81,19 @@ class Macros(val c: blackbox.Context) {
         case ApiMethod(name, request, _) =>
           cq"""
           ${firstUpper(name.toString)} =>
-            val request: $request = fromJson(${request.companion}.getDefaultInstance, json)
-
-            scala.Option {
-              withNewFutureStub(headers) { _.$name(request).asScala.map(toJson) }
-            }
-
+            (for {
+              request <- _root_.cats.data.EitherT.fromEither[Future](fromJson(${request.companion}.getDefaultInstance, json))
+              result <- _root_.cats.data.EitherT {
+                          withNewClientStub(headers) { _.$name(request).asScala.map(toJson) }
+                        }
+            } yield result).value
         """
       }
   }
 
   private def startServer(channelName: String): c.Tree = {
     q"""
-      io.grpc.inprocess.InProcessServerBuilder
+      _root_.io.grpc.inprocess.InProcessServerBuilder
         .forName($channelName)
         .executor(executor)
         .addService(serviceInstance)
@@ -94,7 +104,7 @@ class Macros(val c: blackbox.Context) {
 
   private def createClientsChannel(channelName: String): c.Tree = {
     q"""
-      io.grpc.inprocess.InProcessChannelBuilder
+      _root_.io.grpc.inprocess.InProcessChannelBuilder
         .forName($channelName)
         .executor(executor)
         .build()
@@ -110,7 +120,7 @@ class Macros(val c: blackbox.Context) {
             .getMethods
             .asScala
             .map(_.getMethodDescriptor)
-            .filter(_.getType == io.grpc.MethodDescriptor.MethodType.UNARY) // filter out all STREAMING methods
+            .filter(_.getType == _root_.io.grpc.MethodDescriptor.MethodType.UNARY) // filter out all STREAMING methods
             .map(_.getFullMethodName)
             .toSeq
         }
