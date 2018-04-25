@@ -94,7 +94,7 @@ lazy val root = (project in file("."))
     publish := {},
     publishLocal := {}
   )
-  .aggregate(core)
+  .aggregate(core, http4s)
 
 lazy val core = (project in file("core")).settings(
   commonSettings,
@@ -113,6 +113,18 @@ lazy val core = (project in file("core")).settings(
     "com.avast.cactus" %% "cactus-grpc-server" % "0.10" % "test"
   )
 )
+
+lazy val http4s = (project in file("http4s")).settings(
+  commonSettings,
+  macroSettings,
+  scalaSettings,
+  name := "grpc-json-bridge-http4s",
+  libraryDependencies ++= Seq(
+    "org.http4s" %% "http4s-dsl" % "0.18.2",
+    "org.http4s" %% "http4s-blaze-server" % "0.18.2"
+  ),
+  scalacOptions += "-Ypartial-unification"
+).dependsOn(core)
 
 def grpcExeFileName: String = {
   val os = if (scala.util.Properties.isMac) {
