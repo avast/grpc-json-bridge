@@ -9,12 +9,15 @@ import io.grpc.Status
 import io.grpc.stub.StreamObserver
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.time.{Milliseconds, Seconds, Span}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
+
+  implicit val p: PatienceConfig = PatienceConfig(timeout = Span(1, Seconds), interval = Span(100, Milliseconds))
 
   implicit val executor: ExecutorService = Executors.newCachedThreadPool()
 

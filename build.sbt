@@ -107,6 +107,8 @@ lazy val core = (project in file("core")).settings(
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
     "org.typelevel" %% "cats-core" % "1.0.1",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.7.2",
+    "org.slf4j" % "jul-to-slf4j" % "1.7.25",
+    "org.slf4j" % "jcl-over-slf4j" % "1.7.25",
     "io.grpc" % "grpc-services" % Versions.grpcVersion % "test",
     "com.avast.cactus" %% "cactus-grpc-server" % "0.10" % "test"
   )
