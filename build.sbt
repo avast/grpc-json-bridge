@@ -118,6 +118,7 @@ lazy val http4s = (project in file("http4s")).settings(
   commonSettings,
   macroSettings,
   scalaSettings,
+  grpcTestGenSettings,
   name := "grpc-json-bridge-http4s",
   libraryDependencies ++= Seq(
     "org.http4s" %% "http4s-dsl" % "0.18.2",
