@@ -1,23 +1,27 @@
 package com.avast.grpc.jsonbridge
 
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcHeader
-import io.grpc.BindableService
+import io.grpc.{BindableService, Status}
 
 import scala.concurrent.Future
 
 trait GrpcJsonBridge[Service <: BindableService] extends AutoCloseable {
 
-  /** Invokes method with given name, if it exists.
+  /** Invokes method with given name, if it exists. The method should never return a failed Future.
     *
     * @param name Name of the method.
     * @param json Method input (JSON string).
-    * @return None if such method does not exist, Some(Future) otherwise.
+    * @return Left if there was some error, Right otherwise.
     */
-  def invokeGrpcMethod(name: String, json: String, headers: Seq[GrpcHeader] = Seq.empty): Option[Future[String]]
+  def invokeGrpcMethod(name: String, json: => String, headers: => Seq[GrpcHeader] = Seq.empty): Future[Either[Status, String]]
 
   /** Returns sequence of method names supported by this `GrpcJsonBridge`.
     */
   def serviceInfo: Seq[String]
+
+  /** Returns name of the service (FQN).
+    */
+  def serviceName: String
 }
 
 object GrpcJsonBridge {

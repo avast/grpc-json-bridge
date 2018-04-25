@@ -9,12 +9,15 @@ import io.grpc.Status
 import io.grpc.stub.StreamObserver
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.time.{Milliseconds, Seconds, Span}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
+
+  implicit val p: PatienceConfig = PatienceConfig(timeout = Span(1, Seconds), interval = Span(100, Milliseconds))
 
   implicit val executor: ExecutorService = Executors.newCachedThreadPool()
 
@@ -29,7 +32,6 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
   }
 
   test("basic") {
-
     val bridge = new TestApiServiceImplBase {
       override def get(request: GetRequest, responseObserver: StreamObserver[TestApi.GetResponse]): Unit = {
         assertResult(Seq("abc", "def"))(request.getNamesList.asScala)
@@ -38,12 +40,11 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
       }
     }.createGrpcJsonBridge[TestApiServiceFutureStub]()
 
-    val response = bridge
+    val Right(response) = bridge
       .invokeGrpcMethod(
         "Get",
         """ { "names": ["abc","def"] } """
       )
-      .getOrElse(fail("Method was not found"))
       .futureValue
 
     assertResult("""{
@@ -51,6 +52,43 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
                    |    "name": 42
                    |  }
                    |}""".stripMargin)(response)
+
+    assertResult(Left(Status.NOT_FOUND)) {
+      bridge
+        .invokeGrpcMethod(
+          "get", // wrong casing
+          """ { "names": ["abc","def"] } """
+        )
+        .futureValue
+    }
+  }
+
+  test("bad request") {
+    val bridge = new TestApiServiceImplBase {
+      override def get(request: GetRequest, responseObserver: StreamObserver[TestApi.GetResponse]): Unit = {
+        fail()
+      }
+    }.createGrpcJsonBridge[TestApiServiceFutureStub]()
+
+    val Left(status) = bridge
+      .invokeGrpcMethod("Get", "")
+      .futureValue
+
+    assertResult(Status.INVALID_ARGUMENT.getCode)(status.getCode)
+  }
+
+  test("total failure") {
+    val bridge = new TestApiServiceImplBase {
+      override def get(request: GetRequest, responseObserver: StreamObserver[TestApi.GetResponse]): Unit = {
+        sys.error("The failure")
+      }
+    }.createGrpcJsonBridge[TestApiServiceFutureStub]()
+
+    val Left(status) = bridge
+      .invokeGrpcMethod("Get", """ { "names": ["abc","def"] } """)
+      .futureValue
+
+    assertResult(Status.INTERNAL.getCode)(status.getCode)
   }
 
   test("with Cactus") {
@@ -74,12 +112,11 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
 
     val bridge = service.createGrpcJsonBridge[TestApiServiceFutureStub]()
 
-    val response = bridge
+    val Right(response) = bridge
       .invokeGrpcMethod(
         "Get",
         """ { "names": ["abc","def"] } """
       )
-      .getOrElse(fail("Method was not found"))
       .futureValue
 
     assertResult("""{

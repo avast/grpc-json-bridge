@@ -91,11 +91,6 @@ it tries to lay a common ground using the official style guide: http://docs.scal
     <check class="org.scalastyle.scalariform.LowercasePatternMatchChecker" level="warning" enabled="false"/>
     <!-- Unfortunately does not work well with default argument values. -->
     <check class="org.scalastyle.scalariform.MagicNumberChecker" level="warning" enabled="false"/>
-    <check class="org.scalastyle.scalariform.MethodLengthChecker" level="warning" enabled="true">
-        <parameters>
-            <parameter name="maxLength">50</parameter>
-        </parameters>
-    </check>
     <check class="org.scalastyle.scalariform.MethodNamesChecker" level="warning" enabled="true">
         <parameters>
             <parameter name="regex"><![CDATA[^[a-z][a-zA-Z0-9]*(_=)?$]]></parameter>

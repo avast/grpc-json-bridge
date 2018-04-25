@@ -20,7 +20,7 @@ package object jsonbridge {
       macro Macros.generateGrpcJsonBridge[GrpcServiceStub, GrpcClientStub]
   }
 
-  private[jsonbridge] implicit class ListenableFuture2ScalaFuture[T](val f: ListenableFuture[T]) extends AnyVal {
+  implicit class ListenableFuture2ScalaFuture[T](val f: ListenableFuture[T]) extends AnyVal {
 
     def asScala(implicit executor: Executor): Future[T] = {
       val p = Promise[T]()
