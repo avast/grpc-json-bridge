@@ -104,4 +104,16 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
       assertResult(status)(StatusCodes.Forbidden)
     }
   }
+
+  test("provides service description") {
+    val bridge = new TestApiServiceImplBase {}.createGrpcJsonBridge[TestApiServiceFutureStub]()
+
+    val route = AkkaHttp(Configuration.Default)(bridge)
+
+    Get(s"/${classOf[TestApiServiceImplBase].getName.replace("$", ".")}") ~> route ~> check {
+      assertResult(status)(StatusCodes.OK)
+
+      assertResult("TestApiService/Get\nTestApiService/Get2")(responseAs[String])
+    }
+  }
 }

@@ -46,6 +46,15 @@ object AkkaHttp {
           case None => complete(StatusCodes.NotFound)
         }
       }
+    } ~ get {
+      path(Segment) { serviceName =>
+        services.get(serviceName) match {
+          case Some(service) =>
+            complete(service.serviceInfo.mkString("\n"))
+
+          case None => complete(StatusCodes.NotFound)
+        }
+      }
     }
   }
 
