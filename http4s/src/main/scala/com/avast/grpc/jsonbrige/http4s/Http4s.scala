@@ -18,6 +18,16 @@ object Http4s {
     val services = bridges.map(s => (s.serviceName, s): (String, GrpcJsonBridge[_])).toMap
 
     HttpService[IO] {
+      case _ @GET -> Root / serviceName =>
+        services.get(serviceName) match {
+          case Some(service) =>
+            Ok {
+              service.serviceInfo.mkString("\n")
+            }
+
+          case None => NotFound()
+        }
+
       case request @ POST -> Root / serviceName / methodName =>
         services.get(serviceName) match {
           case Some(service) =>
