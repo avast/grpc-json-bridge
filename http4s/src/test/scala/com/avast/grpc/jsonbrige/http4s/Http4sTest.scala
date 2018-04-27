@@ -9,7 +9,8 @@ import com.avast.grpc.jsonbridge.test.TestApi.{GetRequest, GetResponse}
 import com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.{TestApiServiceFutureStub, TestApiServiceImplBase}
 import io.grpc.stub.StreamObserver
 import io.grpc.{Status, StatusException}
-import org.http4s.{Method, Request, Uri}
+import org.http4s.headers.{`Content-Length`, `Content-Type`}
+import org.http4s.{Headers, MediaType, Method, Request, Uri}
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.ScalaFutures
 
@@ -53,6 +54,18 @@ class Http4sTest extends FunSuite with ScalaFutures {
       .unsafeRunSync()
 
     assertResult(org.http4s.Status.Ok)(response.status)
+
+    assertResult("""{
+                   |  "results": {
+                   |    "name": 42
+                   |  }
+                   |}""".stripMargin)(response.as[String].unsafeRunSync())
+
+    assertResult(
+      Headers(
+        `Content-Type`(MediaType.`application/json`),
+        `Content-Length`.fromLong(37).getOrElse(fail())
+      ))(response.headers)
 
   }
 
