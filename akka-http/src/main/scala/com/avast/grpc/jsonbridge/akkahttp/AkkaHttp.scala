@@ -1,6 +1,7 @@
 package com.avast.grpc.jsonbridge.akkahttp
 
-import akka.http.scaladsl.model.{StatusCode, StatusCodes}
+import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.`Content-Type`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatcher, Route}
 import cats.data.NonEmptyList
@@ -33,7 +34,10 @@ object AkkaHttp {
           case Some(service) =>
             entity(as[String]) { json =>
               onComplete(service.invokeGrpcMethod(methodName, json)) {
-                case Success(Right(r)) => complete(r)
+                case Success(Right(r)) =>
+                  respondWithHeader(`Content-Type`(ContentType.WithMissingCharset(MediaType.applicationWithOpenCharset("json")))) {
+                    complete(r)
+                  }
                 case Success(Left(status)) => complete(mapStatus(status))
                 case Failure(NonFatal(_)) => complete(StatusCodes.InternalServerError)
               }

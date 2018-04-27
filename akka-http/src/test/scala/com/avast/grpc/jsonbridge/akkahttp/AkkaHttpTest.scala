@@ -1,6 +1,7 @@
 package com.avast.grpc.jsonbridge.akkahttp
 
-import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.headers.`Content-Type`
+import akka.http.scaladsl.model.{ContentType, MediaType, StatusCodes}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import cats.data.NonEmptyList
 import com.avast.grpc.jsonbridge._
@@ -45,6 +46,8 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
                      |    "name": 42
                      |  }
                      |}""".stripMargin)(responseAs[String])
+
+      assertResult(Seq(`Content-Type`(ContentType.WithMissingCharset(MediaType.applicationWithOpenCharset("json")))))(headers)
     }
   }
 
