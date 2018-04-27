@@ -2,7 +2,8 @@ package com.avast.grpc.jsonbridge.akkahttp
 
 import akka.http.scaladsl.model.{StatusCode, StatusCodes}
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.{PathMatcher, Route}
+import cats.data.NonEmptyList
 import com.avast.grpc.jsonbridge.GrpcJsonBridge
 import io.grpc.BindableService
 import io.grpc.Status.Code
@@ -11,11 +12,23 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 object AkkaHttp {
-  def apply(bridges: GrpcJsonBridge[_ <: BindableService]*): Route = {
+  def apply(configuration: Configuration)(bridges: GrpcJsonBridge[_ <: BindableService]*): Route = {
     val services = bridges.map(s => (s.serviceName, s): (String, GrpcJsonBridge[_])).toMap
 
+    val pathPattern = configuration.pathPrefix
+      .map {
+        case NonEmptyList(head, tail) =>
+          val rest = if (tail.nonEmpty) {
+            tail.foldLeft[PathMatcher[Unit]](Neutral)(_ / _)
+          } else Neutral
+
+          head ~ rest
+      }
+      .map(_ / Segment / Segment)
+      .getOrElse(Segment / Segment)
+
     post {
-      path(Segment / Segment) { (serviceName, methodName) =>
+      path(pathPattern) { (serviceName, methodName) =>
         services.get(serviceName) match {
           case Some(service) =>
             entity(as[String]) { json =>
@@ -49,4 +62,12 @@ object AkkaHttp {
 
     case _ => StatusCodes.InternalServerError
   }
+}
+
+case class Configuration private (pathPrefix: Option[NonEmptyList[String]])
+
+object Configuration {
+  val Default: Configuration = Configuration(
+    pathPrefix = None
+  )
 }

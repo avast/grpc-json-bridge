@@ -2,12 +2,13 @@ package com.avast.grpc.jsonbridge.akkahttp
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import cats.data.NonEmptyList
 import com.avast.grpc.jsonbridge._
 import com.avast.grpc.jsonbridge.test.TestApi
 import com.avast.grpc.jsonbridge.test.TestApi.{GetRequest, GetResponse}
 import com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.{TestApiServiceFutureStub, TestApiServiceImplBase}
-import io.grpc.{Status, StatusException}
 import io.grpc.stub.StreamObserver
+import io.grpc.{Status, StatusException}
 import org.scalatest.FunSuite
 
 import scala.collection.JavaConverters._
@@ -34,9 +35,33 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
       }
     }.createGrpcJsonBridge[TestApiServiceFutureStub]()
 
-    val route = AkkaHttp(bridge)
+    val route = AkkaHttp(Configuration.Default)(bridge)
 
     Post(s"/${classOf[TestApiServiceImplBase].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """) ~> route ~> check {
+      assertResult(status)(StatusCodes.OK)
+
+      assertResult("""{
+                     |  "results": {
+                     |    "name": 42
+                     |  }
+                     |}""".stripMargin)(responseAs[String])
+    }
+  }
+
+  test("with path prefix") {
+    val bridge = new TestApiServiceImplBase {
+      override def get(request: GetRequest, responseObserver: StreamObserver[TestApi.GetResponse]): Unit = {
+        assertResult(Seq("abc", "def"))(request.getNamesList.asScala)
+        responseObserver.onNext(GetResponse.newBuilder().putResults("name", 42).build())
+        responseObserver.onCompleted()
+      }
+    }.createGrpcJsonBridge[TestApiServiceFutureStub]()
+
+    val configuration = Configuration.Default.copy(pathPrefix = Some(NonEmptyList.of("abc", "def")))
+
+    val route = AkkaHttp(configuration)(bridge)
+
+    Post(s"/abc/def/${classOf[TestApiServiceImplBase].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """) ~> route ~> check {
       assertResult(status)(StatusCodes.OK)
 
       assertResult("""{
@@ -56,7 +81,7 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
       }
     }.createGrpcJsonBridge[TestApiServiceFutureStub]()
 
-    val route = AkkaHttp(bridge)
+    val route = AkkaHttp(Configuration.Default)(bridge)
 
     Post(s"/${classOf[TestApiServiceImplBase].getName.replace("$", ".")}/Get", "") ~> route ~> check {
       assertResult(status)(StatusCodes.BadRequest)
@@ -70,7 +95,7 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
       }
     }.createGrpcJsonBridge[TestApiServiceFutureStub]()
 
-    val route = AkkaHttp(bridge)
+    val route = AkkaHttp(Configuration.Default)(bridge)
 
     Post(s"/${classOf[TestApiServiceImplBase].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """) ~> route ~> check {
       assertResult(status)(StatusCodes.Forbidden)
