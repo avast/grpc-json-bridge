@@ -17,8 +17,12 @@ object Http4s {
       implicit ec: ExecutionContext): HttpService[IO] = {
     val services = bridges.map(s => (s.serviceName, s): (String, GrpcJsonBridge[_])).toMap
 
+    val pathPrefix = configuration.pathPrefix
+      .map(_.foldLeft[Path](Root)(_ / _))
+      .getOrElse(Root)
+
     HttpService[IO] {
-      case _ @GET -> Root / serviceName =>
+      case _ @GET -> `pathPrefix` / serviceName =>
         services.get(serviceName) match {
           case Some(service) =>
             Ok {
@@ -28,7 +32,7 @@ object Http4s {
           case None => NotFound()
         }
 
-      case request @ POST -> Root / serviceName / methodName =>
+      case request @ POST -> `pathPrefix` / serviceName / methodName =>
         services.get(serviceName) match {
           case Some(service) =>
             request
@@ -66,12 +70,13 @@ object Http4s {
   }
 }
 
-case class Configuration(authChallenges: NonEmptyList[Challenge]) {
+case class Configuration(pathPrefix: Option[NonEmptyList[String]], authChallenges: NonEmptyList[Challenge]) {
   private[http4s] val wwwAuthenticate: `WWW-Authenticate` = `WWW-Authenticate`(authChallenges)
 }
 
 object Configuration {
   val Default: Configuration = Configuration(
+    pathPrefix = None,
     authChallenges = NonEmptyList.one(Challenge("Bearer", ""))
   )
 }
