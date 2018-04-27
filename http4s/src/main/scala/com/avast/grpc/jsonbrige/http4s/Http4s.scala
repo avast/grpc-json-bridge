@@ -7,8 +7,8 @@ import io.grpc.Status.Code
 import io.grpc.{BindableService, Status => GrpcStatus}
 import org.http4s.dsl.impl.Root
 import org.http4s.dsl.io._
-import org.http4s.headers.`WWW-Authenticate`
-import org.http4s.{Challenge, HttpService, Response}
+import org.http4s.headers.{`Content-Type`, `WWW-Authenticate`}
+import org.http4s.{Challenge, HttpService, MediaType, Response}
 
 import scala.concurrent.ExecutionContext
 
@@ -42,7 +42,7 @@ object Http4s {
                 IO.fromFuture(IO(f))
               }
               .flatMap {
-                case Right(resp) => Ok(resp)
+                case Right(resp) => Ok(resp, `Content-Type`(MediaType.`application/json`))
                 case Left(st) => mapStatus(st, configuration)
               }
 
