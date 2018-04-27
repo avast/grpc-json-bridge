@@ -2,6 +2,7 @@ package com.avast.grpc.jsonbrige.http4s
 
 import java.util.concurrent.{ExecutorService, Executors}
 
+import cats.data.NonEmptyList
 import cats.effect.IO
 import com.avast.grpc.jsonbridge._
 import com.avast.grpc.jsonbridge.test.TestApi
@@ -32,7 +33,6 @@ class Http4sTest extends FunSuite with ScalaFutures {
   }
 
   test("basic") {
-
     val bridge = new TestApiServiceImplBase {
       override def get(request: GetRequest, responseObserver: StreamObserver[TestApi.GetResponse]): Unit = {
         assertResult(Seq("abc", "def"))(request.getNamesList.asScala)
@@ -47,6 +47,45 @@ class Http4sTest extends FunSuite with ScalaFutures {
       .apply(
         Request[IO](method = Method.POST,
                     uri = Uri.fromString(s"${classOf[TestApiServiceImplBase].getName.replace("$", ".")}/Get").getOrElse(fail()))
+          .withBody(""" { "names": ["abc","def"] } """)
+          .unsafeRunSync()
+      )
+      .value
+      .unsafeRunSync()
+
+    assertResult(org.http4s.Status.Ok)(response.status)
+
+    assertResult("""{
+                   |  "results": {
+                   |    "name": 42
+                   |  }
+                   |}""".stripMargin)(response.as[String].unsafeRunSync())
+
+    assertResult(
+      Headers(
+        `Content-Type`(MediaType.`application/json`),
+        `Content-Length`.fromLong(37).getOrElse(fail())
+      ))(response.headers)
+
+  }
+
+  test("path prefix") {
+    val bridge = new TestApiServiceImplBase {
+      override def get(request: GetRequest, responseObserver: StreamObserver[TestApi.GetResponse]): Unit = {
+        assertResult(Seq("abc", "def"))(request.getNamesList.asScala)
+        responseObserver.onNext(GetResponse.newBuilder().putResults("name", 42).build())
+        responseObserver.onCompleted()
+      }
+    }.createGrpcJsonBridge[TestApiServiceFutureStub]()
+
+    val configuration = Configuration.Default.copy(pathPrefix = Some(NonEmptyList.of("abc", "def")))
+
+    val service = Http4s(configuration)(bridge)
+
+    val Some(response) = service
+      .apply(
+        Request[IO](method = Method.POST,
+                    uri = Uri.fromString(s"/abc/def/${classOf[TestApiServiceImplBase].getName.replace("$", ".")}/Get").getOrElse(fail()))
           .withBody(""" { "names": ["abc","def"] } """)
           .unsafeRunSync()
       )
@@ -114,5 +153,23 @@ class Http4sTest extends FunSuite with ScalaFutures {
       .futureValue
 
     assertResult(org.http4s.Status.Forbidden)(response.status)
+  }
+
+  test("provide service info") {
+    val bridge = new TestApiServiceImplBase {}.createGrpcJsonBridge[TestApiServiceFutureStub]()
+
+    val service = Http4s(Configuration.Default)(bridge)
+
+    val Some(response) = service
+      .apply(
+        Request[IO](method = Method.GET,
+                    uri = Uri.fromString(s"${classOf[TestApiServiceImplBase].getName.replace("$", ".")}").getOrElse(fail()))
+      )
+      .value
+      .unsafeRunSync()
+
+    assertResult(org.http4s.Status.Ok)(response.status)
+
+    assertResult("TestApiService/Get\nTestApiService/Get2")(response.as[String].unsafeRunSync())
   }
 }
