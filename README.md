@@ -1,16 +1,103 @@
-[![TeamCity](https://teamcity.int.avast.com/app/rest/builds/buildType:backends_JvmLibs_GrpcUtils_BuildTest,branch:<default>/statusIcon)](https://teamcity.int.avast.com/project.html?projectId=backends_JvmLibs_GrpcUtils)
+# gRPC Json Bridge
 
-# gRPC utils
+[![Build Status](https://travis-ci.org/avast/grpc-json-bridge.svg?branch=master)](https://travis-ci.org/avast/grpc-json-bridge)
+[![Download](https://api.bintray.com/packages/avast/maven/grpc-json-bridge/images/download.svg) ](https://bintray.com/avast/maven/grpc-json-bridge/_latestVersion)
 
-Set of classes to help us work with gRPC
+This library makes possible to receive a JSON encoded request to a gRPC service. It provides a implementation-agnostic module for mapping to
+your favorite HTTP server as well as few implementations for direct usage in some well-known HTTP servers.
 
-## GrpcJsonWrapper
+Its uses Scala macros for creating mapping between runtime-provided service and method names to pregenerated Java gRPC classes. In case you
+don't want to use _plain Java API_ you can easily use it together with [Cactus](https://github.com/avast/cactus).
 
-Provide HTTP JSON API by gRPC proto contract.
+There are several modules:
+1. core - for basic implementation-agnostic usage
+1. [http4s](http4s) - integration with [http4s](https://http4s.org/) webserver
+1. [akka-http](akka-http) - integration with [Akka Http](https://doc.akka.io/docs/akka-http/current/server-side/index.html) webserver
 
-### Setup and start http server
-For example we have proto file  with definition of `ControllerService` and gRPC service implementation `ControllerApiGrpcService`.
+## Core module
 
-    val wrapper = new InProcessJsonWrapperBuilder(classOf[ControllerServiceGrpc], new ControllerApiGrpcService(flowService, stateStore))
-    val httpServer = new GrpcYapWrapperServerBuilder("localhost", 8080, wrapper).start()
+### Dependency
 
+#### Gradle
+```groovy
+compile 'com.avast.grpc:grpc-json-bridge-akkahttp_2.12:x.x.x'
+```
+
+#### Gradle
+```scala
+libraryDependencies += "com.avast.grpc" %% "grpc-json-bridge-core" % "x.x.x
+```
+
+### Usage
+
+Having a proto like
+```proto
+option java_package = "com.avast.grpc.jsonbridge.test";
+
+message TestApi {
+    message GetRequest {
+        repeated string names = 1;           // REQUIRED
+    }
+    
+    message GetResponse {
+        map<string, int32> results = 1;      // REQUIRED
+    }
+}
+
+service TestApiService {
+    rpc Get (TestApi.GetRequest) returns (TestApi.GetResponse) {}
+}
+```
+you can create [`GrpcJsonBridge`](core/src/main/scala/com/avast/grpc/jsonbridge/GrpcJsonBridge.scala) instance by
+```scala
+import com.avast.grpc.jsonbridge._ // this does the magic!
+
+import scala.concurrent.ExecutionContextExecutorService
+import com.avast.grpc.jsonbridge.test.TestApi
+import com.avast.grpc.jsonbridge.test.TestApi.{GetRequest, GetResponse}
+import com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.{TestApiServiceFutureStub, TestApiServiceImplBase}
+import io.grpc.stub.StreamObserver
+
+implicit val executor: ExecutionContextExecutorService = ???
+
+val bridge = new TestApiServiceImplBase {
+  override def get(request: GetRequest, responseObserver: StreamObserver[TestApi.GetResponse]): Unit = {
+    responseObserver.onNext(GetResponse.newBuilder().putResults("name", 42).build())
+    responseObserver.onCompleted()
+  }
+}.createGrpcJsonBridge[TestApiServiceFutureStub]() // this does the magic!
+```
+or you can even go with the [Cactus](https://github.com/avast/cactus) and let it map the GPB messages to your case classes:
+```scala
+import com.avast.grpc.jsonbridge._ // import for the grpc-json-bridge mapping
+import com.avast.cactus.grpc.server._ // import for the cactus mapping
+
+import com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.{TestApiServiceFutureStub, TestApiServiceImplBase}
+import io.grpc.Status
+
+import scala.concurrent.{ExecutionContextExecutorService, Future}
+
+implicit val executor: ExecutionContextExecutorService = ???
+
+case class MyRequest(names: Seq[String])
+
+case class MyResponse(results: Map[String, Int])
+
+trait MyApi {
+  def get(request: MyRequest): Future[Either[Status, MyResponse]]
+}
+
+val service = new MyApi {
+  override def get(request: MyRequest): Future[Either[Status, MyResponse]] = Future.successful {
+    Right {
+      MyResponse {
+        Map(
+          "name" -> 42
+        )
+      }
+    }
+  }
+}.mappedToService[TestApiServiceImplBase]() // cactus mapping
+
+val bridge = service.createGrpcJsonBridge[TestApiServiceFutureStub]()
+```
