@@ -6,6 +6,8 @@ val logger: Logger = ConsoleLogger()
 lazy val Versions = new {
   val gpb3Version = "3.5.1"
   val grpcVersion = "1.11.0"
+
+  val akkaHttp = "10.1.1"
 }
 
 lazy val scalaSettings = Seq(
@@ -94,7 +96,7 @@ lazy val root = (project in file("."))
     publish := {},
     publishLocal := {}
   )
-  .aggregate(core)
+  .aggregate(core, akkaHttp)
 
 lazy val core = (project in file("core")).settings(
   commonSettings,
@@ -113,6 +115,19 @@ lazy val core = (project in file("core")).settings(
     "com.avast.cactus" %% "cactus-grpc-server" % "0.10" % "test"
   )
 )
+
+lazy val akkaHttp = (project in file("akka-http")).settings(
+  commonSettings,
+  macroSettings,
+  scalaSettings,
+  grpcTestGenSettings,
+  name := "grpc-json-bridge-akkahttp",
+  libraryDependencies ++= Seq(
+    "com.typesafe.akka" %% "akka-http" % Versions.akkaHttp,
+    "com.typesafe.akka" %% "akka-stream" % "2.5.12",
+    "com.typesafe.akka" %% "akka-http-testkit" % Versions.akkaHttp % "test"
+  ),
+).dependsOn(core)
 
 def grpcExeFileName: String = {
   val os = if (scala.util.Properties.isMac) {
