@@ -1,0 +1,86 @@
+package com.avast.grpc.jsonbridge.akkahttp
+
+import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.`Content-Type`
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.{PathMatcher, Route}
+import cats.data.NonEmptyList
+import com.avast.grpc.jsonbridge.GrpcJsonBridge
+import io.grpc.BindableService
+import io.grpc.Status.Code
+
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success}
+
+object AkkaHttp {
+  def apply(configuration: Configuration)(bridges: GrpcJsonBridge[_ <: BindableService]*): Route = {
+    val services = bridges.map(s => (s.serviceName, s): (String, GrpcJsonBridge[_])).toMap
+
+    val pathPattern = configuration.pathPrefix
+      .map {
+        case NonEmptyList(head, tail) =>
+          val rest = if (tail.nonEmpty) {
+            tail.foldLeft[PathMatcher[Unit]](Neutral)(_ / _)
+          } else Neutral
+
+          head ~ rest
+      }
+      .map(_ / Segment / Segment)
+      .getOrElse(Segment / Segment)
+
+    post {
+      path(pathPattern) { (serviceName, methodName) =>
+        services.get(serviceName) match {
+          case Some(service) =>
+            entity(as[String]) { json =>
+              onComplete(service.invokeGrpcMethod(methodName, json)) {
+                case Success(Right(r)) =>
+                  respondWithHeader(`Content-Type`(ContentType.WithMissingCharset(MediaType.applicationWithOpenCharset("json")))) {
+                    complete(r)
+                  }
+                case Success(Left(status)) => complete(mapStatus(status))
+                case Failure(NonFatal(_)) => complete(StatusCodes.InternalServerError)
+              }
+            }
+
+          case None => complete(StatusCodes.NotFound)
+        }
+      }
+    } ~ get {
+      path(Segment) { serviceName =>
+        services.get(serviceName) match {
+          case Some(service) =>
+            complete(service.serviceInfo.mkString("\n"))
+
+          case None => complete(StatusCodes.NotFound)
+        }
+      }
+    }
+  }
+
+  private def mapStatus(s: io.grpc.Status): StatusCode = s.getCode match {
+    case Code.NOT_FOUND => StatusCodes.NotFound
+    case Code.INTERNAL => StatusCodes.InternalServerError
+    case Code.INVALID_ARGUMENT => StatusCodes.BadRequest
+    case Code.FAILED_PRECONDITION => StatusCodes.BadRequest
+    case Code.CANCELLED => StatusCodes.RequestTimeout
+    case Code.UNAVAILABLE => StatusCodes.ServiceUnavailable
+    case Code.DEADLINE_EXCEEDED => StatusCodes.RequestTimeout
+    case Code.UNAUTHENTICATED => StatusCodes.Unauthorized
+    case Code.PERMISSION_DENIED => StatusCodes.Forbidden
+    case Code.UNIMPLEMENTED => StatusCodes.NotImplemented
+    case Code.RESOURCE_EXHAUSTED => StatusCodes.TooManyRequests
+    case Code.ABORTED => StatusCodes.InternalServerError
+    case Code.DATA_LOSS => StatusCodes.InternalServerError
+
+    case _ => StatusCodes.InternalServerError
+  }
+}
+
+case class Configuration private (pathPrefix: Option[NonEmptyList[String]])
+
+object Configuration {
+  val Default: Configuration = Configuration(
+    pathPrefix = None
+  )
+}
