@@ -13,10 +13,8 @@ class Macros(val c: blackbox.Context) {
 
   import c.universe._
 
-  def generateGrpcJsonBridge[GrpcServiceStub <: BindableService, GrpcClientStub <: AbstractStub[GrpcClientStub]: WeakTypeTag]()(
-      ec: c.Tree,
-      ex: c.Tree,
-      ct: c.Tree): c.Expr[GrpcJsonBridge[GrpcServiceStub]] = {
+  def generateGrpcJsonBridge[GrpcServiceStub <: BindableService, GrpcClientStub <: AbstractStub[GrpcClientStub]: WeakTypeTag](
+      interceptors: c.Tree*)(ec: c.Tree, ex: c.Tree, ct: c.Tree): c.Expr[GrpcJsonBridge[GrpcServiceStub]] = {
 
     val clientType = weakTypeOf[GrpcClientStub]
     val serviceTypeRaw = extractSymbolFromClassTag(ct)
@@ -37,7 +35,7 @@ class Macros(val c: blackbox.Context) {
         import _root_.cats.instances.future._
         import _root_.cats.data._
 
-        private val serviceInstance: _root_.io.grpc.BindableService = { $getVariable }
+        private val serviceInstance: _root_.io.grpc.ServerServiceDefinition = { _root_.io.grpc.ServerInterceptors.intercept($getVariable, Seq[_root_.io.grpc.ServerInterceptor](..$interceptors): _*) }
 
         private val clientsChannel: _root_.io.grpc.ManagedChannel = ${createClientsChannel(channelName)}
         private val server: _root_.io.grpc.Server = ${startServer(channelName)}
@@ -116,7 +114,6 @@ class Macros(val c: blackbox.Context) {
           import scala.collection.JavaConverters._
 
           serviceInstance
-            .bindService()
             .getMethods
             .asScala
             .map(_.getMethodDescriptor)
