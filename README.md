@@ -1,4 +1,4 @@
-# gRPC Json Bridge
+# gRPC JSON Bridge
 
 [![Build Status](https://travis-ci.org/avast/grpc-json-bridge.svg?branch=master)](https://travis-ci.org/avast/grpc-json-bridge)
 [![Download](https://api.bintray.com/packages/avast/maven/grpc-json-bridge/images/download.svg) ](https://bintray.com/avast/maven/grpc-json-bridge/_latestVersion)
@@ -13,6 +13,12 @@ There are several modules:
 1. core - for basic implementation-agnostic usage
 1. [http4s](http4s) - integration with [http4s](https://http4s.org/) webserver
 1. [akka-http](akka-http) - integration with [Akka Http](https://doc.akka.io/docs/akka-http/current/server-side/index.html) webserver
+
+The created [`GrpcJsonBridge`](core/src/main/scala/com/avast/grpc/jsonbridge/GrpcJsonBridge.scala) exposes not only the methods itself but
+also provides their list to make possible to implement an _info_ endpoint (which is already implemented in server-agnostic implementations).
+
+Recommended URL scheme for exposing the service (and the one used in provided implementations) is `/$SERVICENAME/$METHOD` name and the http
+method is obviously `POST`. The _info_ endpoint is supposed to be exposed on the `/$SERVICENAME` URL and available with `GET` request.
 
 ## Core module
 
@@ -100,4 +106,16 @@ val service = new MyApi {
 }.mappedToService[TestApiServiceImplBase]() // cactus mapping
 
 val bridge = service.createGrpcJsonBridge[TestApiServiceFutureStub]()
+```
+
+### Calling the bridged service
+
+You can use e.g. cURL command to call the `Get` method
+
+```
+curl -H "Content-Type: application/json" --data " { \"names\": [\"abc\",\"def\"] } " http://localhost:9999/com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.TestApiServiceImplBase/Get
+```
+or get info about exposed service:
+```
+curl http://localhost:9999/com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.TestApiServiceImplBase
 ```
