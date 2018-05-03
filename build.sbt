@@ -3,6 +3,8 @@ import sbt.Keys.libraryDependencies
 
 val logger: Logger = ConsoleLogger()
 
+crossScalaVersions := Seq("2.12.6")
+
 lazy val Versions = new {
   val gpb3Version = "3.5.1"
   val grpcVersion = "1.11.0"
@@ -11,7 +13,7 @@ lazy val Versions = new {
 }
 
 lazy val scalaSettings = Seq(
-  scalaVersion := "2.12.5",
+  scalaVersion := "2.12.6",
   scalacOptions += "-deprecation",
   scalacOptions += "-unchecked",
   scalacOptions += "-feature"
