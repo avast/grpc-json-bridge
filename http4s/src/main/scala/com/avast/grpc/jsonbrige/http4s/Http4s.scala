@@ -3,16 +3,19 @@ package com.avast.grpc.jsonbrige.http4s
 import cats.data.NonEmptyList
 import cats.effect.IO
 import com.avast.grpc.jsonbridge.GrpcJsonBridge
+import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcHeader
 import io.grpc.Status.Code
 import io.grpc.{BindableService, Status => GrpcStatus}
 import org.http4s.dsl.impl.Root
 import org.http4s.dsl.io._
 import org.http4s.headers.{`Content-Type`, `WWW-Authenticate`}
-import org.http4s.{Challenge, HttpService, MediaType, Response}
+import org.http4s.{Challenge, Header, Headers, HttpService, MediaType, Response}
 
 import scala.concurrent.ExecutionContext
 
 object Http4s {
+  private val JsonContentType: String = MediaType.`application/json`.renderString
+
   def apply(configuration: Configuration)(bridges: GrpcJsonBridge[_ <: BindableService]*)(
       implicit ec: ExecutionContext): HttpService[IO] = {
     val services = bridges.map(s => (s.serviceName, s): (String, GrpcJsonBridge[_])).toMap
@@ -33,22 +36,35 @@ object Http4s {
         }
 
       case request @ POST -> `pathPrefix` / serviceName / methodName =>
-        services.get(serviceName) match {
-          case Some(service) =>
-            request
-              .as[String]
-              .map(service.invokeGrpcMethod(methodName, _))
-              .flatMap { f =>
-                IO.fromFuture(IO(f))
-              }
-              .flatMap {
-                case Right(resp) => Ok(resp, `Content-Type`(MediaType.`application/json`))
-                case Left(st) => mapStatus(st, configuration)
-              }
+        val headers = request.headers
 
-          case None => NotFound()
+        headers.get(`Content-Type`.name) match {
+          case Some(Header(`Content-Type`.name, `JsonContentType`)) =>
+            services.get(serviceName) match {
+              case Some(service) =>
+                request
+                  .as[String]
+                  .map(service.invokeGrpcMethod(methodName, _, mapHeaders(headers)))
+                  .flatMap { f =>
+                    IO.fromFuture(IO(f))
+                  }
+                  .flatMap {
+                    case Right(resp) => Ok(resp, `Content-Type`(MediaType.`application/json`))
+                    case Left(st) => mapStatus(st, configuration)
+                  }
+
+              case None => NotFound()
+            }
+
+          case _ => BadRequest()
         }
     }
+  }
+
+  private def mapHeaders(headers: Headers): Seq[GrpcHeader] = {
+    headers.map { h =>
+      GrpcHeader(h.name.value, h.value)
+    }.toSeq
   }
 
   private def mapStatus(s: GrpcStatus, configuration: Configuration): IO[Response[IO]] = s.getCode match {
