@@ -4,7 +4,8 @@
 [![Download](https://api.bintray.com/packages/avast/maven/grpc-json-bridge/images/download.svg) ](https://bintray.com/avast/maven/grpc-json-bridge/_latestVersion)
 
 This library makes possible to receive a JSON encoded request to a gRPC service. It provides an implementation-agnostic module for mapping to
-your favorite HTTP server as well as few implementations for direct usage in some well-known HTTP servers.
+your favorite HTTP server as well as few implementations for direct usage in some well-known HTTP servers.  
+For requests/responses mapping a [standard GPB <-> JSON mapping](https://developers.google.com/protocol-buffers/docs/proto3#json) is used.
 
 It uses Scala macros for creating mapping between runtime-provided service and method names to pregenerated Java gRPC classes. In case you
 don't want to use _plain Java API_ you can easily use it together with [Cactus](https://github.com/avast/cactus).
@@ -17,7 +18,7 @@ There are several modules:
 The created [`GrpcJsonBridge`](core/src/main/scala/com/avast/grpc/jsonbridge/GrpcJsonBridge.scala) exposes not only the methods itself but
 also provides their list to make possible to implement an _info_ endpoint (which is already implemented in server-agnostic implementations).
 
-Recommended URL scheme for exposing the service (and the one used in provided implementations) is `/$SERVICENAME/$METHOD` name and the http
+Recommended URL pattern for exposing the service (and the one used in provided implementations) is `/$SERVICENAME/$METHOD` name and the http
 method is obviously `POST`. The _info_ endpoint is supposed to be exposed on the `/$SERVICENAME` URL and available with `GET` request.
 
 ## Core module
@@ -113,9 +114,9 @@ val bridge = service.createGrpcJsonBridge[TestApiServiceFutureStub]()
 You can use e.g. cURL command to call the `Get` method
 
 ```
-curl -H "Content-Type: application/json" --data " { \"names\": [\"abc\",\"def\"] } " http://localhost:9999/com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.TestApiServiceImplBase/Get
+curl -X POST -H "Content-Type: application/json" --data " { \"names\": [\"abc\",\"def\"] } " http://localhost:9999/com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.TestApiServiceImplBase/Get
 ```
 or get info about exposed service:
 ```
-curl http://localhost:9999/com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.TestApiServiceImplBase
+curl -X GET http://localhost:9999/com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.TestApiServiceImplBase
 ```
