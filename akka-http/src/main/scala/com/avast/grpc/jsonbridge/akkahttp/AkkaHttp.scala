@@ -6,6 +6,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatcher, Route}
 import cats.data.NonEmptyList
 import com.avast.grpc.jsonbridge.GrpcJsonBridge
+import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcHeader
 import io.grpc.BindableService
 import io.grpc.Status.Code
 
@@ -13,6 +14,11 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 object AkkaHttp {
+
+  private[akkahttp] final val JsonContentType: `Content-Type` = `Content-Type` {
+    ContentType.WithMissingCharset(MediaType.applicationWithOpenCharset("json"))
+  }
+
   def apply(configuration: Configuration)(bridges: GrpcJsonBridge[_ <: BindableService]*): Route = {
     val services = bridges.map(s => (s.serviceName, s): (String, GrpcJsonBridge[_])).toMap
 
@@ -30,20 +36,28 @@ object AkkaHttp {
 
     post {
       path(pathPattern) { (serviceName, methodName) =>
-        services.get(serviceName) match {
-          case Some(service) =>
-            entity(as[String]) { json =>
-              onComplete(service.invokeGrpcMethod(methodName, json)) {
-                case Success(Right(r)) =>
-                  respondWithHeader(`Content-Type`(ContentType.WithMissingCharset(MediaType.applicationWithOpenCharset("json")))) {
-                    complete(r)
+        extractRequest { req =>
+          req.header[`Content-Type`] match {
+            case Some(`JsonContentType`) =>
+              services.get(serviceName) match {
+                case Some(service) =>
+                  entity(as[String]) { json =>
+                    onComplete(service.invokeGrpcMethod(methodName, json, mapHeaders(req.headers))) {
+                      case Success(Right(r)) =>
+                        respondWithHeader(JsonContentType) {
+                          complete(r)
+                        }
+                      case Success(Left(status)) => complete(mapStatus(status))
+                      case Failure(NonFatal(_)) => complete(StatusCodes.InternalServerError)
+                    }
                   }
-                case Success(Left(status)) => complete(mapStatus(status))
-                case Failure(NonFatal(_)) => complete(StatusCodes.InternalServerError)
-              }
-            }
 
-          case None => complete(StatusCodes.NotFound)
+                case None => complete(StatusCodes.NotFound)
+              }
+
+            case _ =>
+              complete(StatusCodes.BadRequest)
+          }
         }
       }
     } ~ get {
@@ -55,6 +69,12 @@ object AkkaHttp {
           case None => complete(StatusCodes.NotFound)
         }
       }
+    }
+  }
+
+  private def mapHeaders(headers: Seq[HttpHeader]): Seq[GrpcHeader] = {
+    headers.map { h =>
+      GrpcHeader(h.name(), h.value())
     }
   }
 
