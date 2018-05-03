@@ -97,7 +97,7 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
     }
 
     // no Content-Type header
-    Post(s"/${classOf[TestApiServiceImplBase].getName.replace("$", ".")}/Get", "") ~> route ~> check {
+    Post(s"/${classOf[TestApiServiceImplBase].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """) ~> route ~> check {
       assertResult(StatusCodes.BadRequest)(status)
     }
   }
