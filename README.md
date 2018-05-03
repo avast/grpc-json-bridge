@@ -3,10 +3,10 @@
 [![Build Status](https://travis-ci.org/avast/grpc-json-bridge.svg?branch=master)](https://travis-ci.org/avast/grpc-json-bridge)
 [![Download](https://api.bintray.com/packages/avast/maven/grpc-json-bridge/images/download.svg) ](https://bintray.com/avast/maven/grpc-json-bridge/_latestVersion)
 
-This library makes possible to receive a JSON encoded request to a gRPC service. It provides a implementation-agnostic module for mapping to
+This library makes possible to receive a JSON encoded request to a gRPC service. It provides an implementation-agnostic module for mapping to
 your favorite HTTP server as well as few implementations for direct usage in some well-known HTTP servers.
 
-Its uses Scala macros for creating mapping between runtime-provided service and method names to pregenerated Java gRPC classes. In case you
+It uses Scala macros for creating mapping between runtime-provided service and method names to pregenerated Java gRPC classes. In case you
 don't want to use _plain Java API_ you can easily use it together with [Cactus](https://github.com/avast/cactus).
 
 There are several modules:
@@ -31,7 +31,7 @@ compile 'com.avast.grpc:grpc-json-bridge-akkahttp_2.12:x.x.x'
 
 #### Gradle
 ```scala
-libraryDependencies += "com.avast.grpc" %% "grpc-json-bridge-core" % "x.x.x
+libraryDependencies += "com.avast.grpc" %% "grpc-json-bridge-core" % "x.x.x"
 ```
 
 ### Usage

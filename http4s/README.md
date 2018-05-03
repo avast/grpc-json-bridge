@@ -11,7 +11,7 @@ compile 'com.avast.grpc:grpc-json-bridge-http4s_2.12:x.x.x'
 
 ### Gradle
 ```scala
-libraryDependencies += "com.avast.grpc" %% "grpc-json-bridge-http4s" % "x.x.x
+libraryDependencies += "com.avast.grpc" %% "grpc-json-bridge-http4s" % "x.x.x"
 ```
 
 

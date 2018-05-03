@@ -11,7 +11,7 @@ compile 'com.avast.grpc:grpc-json-bridge-akkahttp_2.12:x.x.x'
 
 ### Gradle
 ```scala
-libraryDependencies += "com.avast.grpc" %% "grpc-json-bridge-akkahttp" % "x.x.x
+libraryDependencies += "com.avast.grpc" %% "grpc-json-bridge-akkahttp" % "x.x.x"
 ```
 
 ## Usage
