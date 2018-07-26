@@ -54,7 +54,7 @@ class Macros(val c: blackbox.Context) {
               case _ => scala.concurrent.Future.successful(_root_.scala.Left(_root_.io.grpc.Status.NOT_FOUND))
             }
           } catch {
-            case _root_.scala.util.control.NonFatal(e) => scala.concurrent.Future.successful(_root_.scala.Left(_root_.io.grpc.Status.INTERNAL))
+            case _root_.scala.util.control.NonFatal(e) => _root_.scala.concurrent.Future.successful(_root_.scala.Left(_root_.io.grpc.Status.INTERNAL))
           }
         }
 
@@ -83,7 +83,7 @@ class Macros(val c: blackbox.Context) {
           cq"""
           ${firstUpper(name.toString)} =>
             (for {
-              request <- _root_.cats.data.EitherT.fromEither[Future](fromJson(${request.companion}.getDefaultInstance, json))
+              request <- _root_.cats.data.EitherT.fromEither[_root_.scala.concurrent.Future](fromJson(${request.companion}.getDefaultInstance, json))
               result <- _root_.cats.data.EitherT {
                           withNewClientStub(headers) { _.$name(request).asScala(executor).map(toJson(_)) }
                         }
