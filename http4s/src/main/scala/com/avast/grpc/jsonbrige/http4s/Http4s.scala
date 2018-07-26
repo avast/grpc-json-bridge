@@ -4,16 +4,18 @@ import cats.data.NonEmptyList
 import cats.effect.IO
 import com.avast.grpc.jsonbridge.GrpcJsonBridge
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcHeader
+import com.typesafe.scalalogging.StrictLogging
 import io.grpc.Status.Code
 import io.grpc.{BindableService, Status => GrpcStatus}
 import org.http4s.dsl.impl.Root
 import org.http4s.dsl.io._
 import org.http4s.headers.{`Content-Type`, `WWW-Authenticate`}
+import org.http4s.server.middleware.{CORS, CORSConfig}
 import org.http4s.{Challenge, Header, Headers, HttpService, MediaType, Response}
 
 import scala.concurrent.ExecutionContext
 
-object Http4s {
+object Http4s extends StrictLogging {
   private val JsonContentType: String = MediaType.`application/json`.renderString
 
   def apply(configuration: Configuration)(bridges: GrpcJsonBridge[_ <: BindableService]*)(
@@ -24,7 +26,9 @@ object Http4s {
       .map(_.foldLeft[Path](Root)(_ / _))
       .getOrElse(Root)
 
-    HttpService[IO] {
+    logger.info(s"Creating HTTP4S service proxying gRPC services: ${bridges.map(_.serviceName).mkString("[", ", ", "]")}")
+
+    val http4sService = HttpService[IO] {
       case _ @GET -> `pathPrefix` / serviceName =>
         services.get(serviceName) match {
           case Some(service) =>
@@ -59,6 +63,11 @@ object Http4s {
           case _ => BadRequest()
         }
     }
+
+    configuration.corsConfig match {
+      case Some(c) => CORS(http4sService, c)
+      case None => http4sService
+    }
   }
 
   private def mapHeaders(headers: Headers): Seq[GrpcHeader] = {
@@ -86,13 +95,16 @@ object Http4s {
   }
 }
 
-case class Configuration(pathPrefix: Option[NonEmptyList[String]], authChallenges: NonEmptyList[Challenge]) {
+case class Configuration(pathPrefix: Option[NonEmptyList[String]],
+                         authChallenges: NonEmptyList[Challenge],
+                         corsConfig: Option[CORSConfig]) {
   private[http4s] val wwwAuthenticate: `WWW-Authenticate` = `WWW-Authenticate`(authChallenges)
 }
 
 object Configuration {
   val Default: Configuration = Configuration(
     pathPrefix = None,
-    authChallenges = NonEmptyList.one(Challenge("Bearer", ""))
+    authChallenges = NonEmptyList.one(Challenge("Bearer", "")),
+    corsConfig = None
   )
 }
