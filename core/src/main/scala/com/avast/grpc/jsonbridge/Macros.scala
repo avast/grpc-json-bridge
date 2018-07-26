@@ -35,6 +35,8 @@ class Macros(val c: blackbox.Context) {
         import _root_.cats.instances.future._
         import _root_.cats.data._
 
+        private implicit val executor: _root_.java.util.concurrent.Executor = $ex
+
         private val serviceInstance: _root_.io.grpc.ServerServiceDefinition = { _root_.io.grpc.ServerInterceptors.intercept($getVariable, Seq[_root_.io.grpc.ServerInterceptor](..$interceptors): _*) }
 
         private val clientsChannel: _root_.io.grpc.ManagedChannel = ${createClientsChannel(channelName)}
@@ -63,6 +65,7 @@ class Macros(val c: blackbox.Context) {
         override def close: Unit = {
           clientsChannel.shutdownNow()
           server.shutdownNow()
+          ()
         }
       }
       """

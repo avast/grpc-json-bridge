@@ -14,6 +14,7 @@ import io.grpc.stub.StreamObserver
 import org.scalatest.FunSuite
 
 import scala.collection.JavaConverters._
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Random
 
