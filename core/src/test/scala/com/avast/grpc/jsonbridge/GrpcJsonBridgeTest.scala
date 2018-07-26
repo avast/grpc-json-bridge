@@ -1,34 +1,31 @@
 package com.avast.grpc.jsonbridge
 
-import java.util.concurrent.{ExecutorService, Executors}
-
+import com.avast.cactus.grpc.server.GrpcService
 import com.avast.grpc.jsonbridge.test.TestApi
 import com.avast.grpc.jsonbridge.test.TestApi.{GetRequest, GetResponse}
 import com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.{TestApiServiceFutureStub, TestApiServiceImplBase}
 import io.grpc.Status
 import io.grpc.stub.StreamObserver
+import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Milliseconds, Seconds, Span}
 
 import scala.collection.JavaConverters._
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 
 class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
 
   implicit val p: PatienceConfig = PatienceConfig(timeout = Span(1, Seconds), interval = Span(100, Milliseconds))
 
-  implicit val executor: ExecutorService = Executors.newCachedThreadPool()
-
   case class MyRequest(names: Seq[String])
 
   case class MyResponse(results: Map[String, Int])
 
-  trait MyApi {
-    def get(request: MyRequest): Future[Either[Status, MyResponse]]
+  trait MyApi extends GrpcService[Task] {
+    def get(request: MyRequest): Task[Either[Status, MyResponse]]
 
-    def get2(request: MyRequest): Future[Either[Status, MyResponse]]
+    def get2(request: MyRequest): Task[Either[Status, MyResponse]]
   }
 
   test("basic") {
@@ -92,10 +89,11 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
   }
 
   test("with Cactus") {
+    import com.avast.cactus.grpc._
     import com.avast.cactus.grpc.server._
 
     val service = new MyApi {
-      override def get(request: MyRequest): Future[Either[Status, MyResponse]] = Future.successful {
+      override def get(request: MyRequest): Task[Either[Status, MyResponse]] = Task {
         assertResult(MyRequest(Seq("abc", "def")))(request)
 
         Right {
@@ -107,7 +105,7 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
         }
       }
 
-      override def get2(request: MyRequest): Future[Either[Status, MyResponse]] = Future.successful(Left(Status.INTERNAL))
+      override def get2(request: MyRequest): Task[Either[Status, MyResponse]] = Task.now(Left(Status.INTERNAL))
     }.mappedToService[TestApiServiceImplBase]() // cactus mapping
 
     val bridge = service.createGrpcJsonBridge[TestApiServiceFutureStub]()

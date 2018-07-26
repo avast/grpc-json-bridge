@@ -35,7 +35,7 @@ class Macros(val c: blackbox.Context) {
         import _root_.cats.instances.future._
         import _root_.cats.data._
 
-        private implicit val executor: _root_.java.util.concurrent.Executor = $ex
+        private val executor: _root_.java.util.concurrent.Executor = $ex
 
         private val serviceInstance: _root_.io.grpc.ServerServiceDefinition = { _root_.io.grpc.ServerInterceptors.intercept($getVariable, Seq[_root_.io.grpc.ServerInterceptor](..$interceptors): _*) }
 
@@ -85,7 +85,7 @@ class Macros(val c: blackbox.Context) {
             (for {
               request <- _root_.cats.data.EitherT.fromEither[Future](fromJson(${request.companion}.getDefaultInstance, json))
               result <- _root_.cats.data.EitherT {
-                          withNewClientStub(headers) { _.$name(request).asScala.map(toJson) }
+                          withNewClientStub(headers) { _.$name(request).asScala(executor).map(toJson(_)) }
                         }
             } yield result).value
         """
@@ -129,8 +129,8 @@ class Macros(val c: blackbox.Context) {
 
   private def handleCactusType(t: c.Type): c.Type = {
     // needs to be matched by String, because the dependency on Cactus is missing (by purpose)
-    if (t.baseClasses.exists(_.fullName == "com.avast.cactus.grpc.server.GrpcService")) {
-      t.typeArgs.headOption.getOrElse(terminateWithInfo("Invalid com.avast.cactus.grpc.server.GrpcService on classpath"))
+    if (t.baseClasses.exists(_.fullName == "com.avast.cactus.grpc.server.MappedGrpcService")) {
+      t.typeArgs.headOption.getOrElse(terminateWithInfo("Invalid com.avast.cactus.grpc.server.MappedGrpcService on classpath"))
     } else t
   }
 

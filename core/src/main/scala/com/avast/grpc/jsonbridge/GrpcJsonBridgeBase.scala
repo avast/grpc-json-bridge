@@ -17,7 +17,8 @@ trait GrpcJsonBridgeBase[Stub <: io.grpc.stub.AbstractStub[Stub]] extends Strict
   protected def newFutureStub: Stub
 
   // https://groups.google.com/forum/#!topic/grpc-io/1-KMubq1tuc
-  protected def withNewClientStub[A](headers: Seq[GrpcHeader])(f: Stub => Future[A])(implicit ec: ExecutionContext): Future[Either[Status, A]] = {
+  protected def withNewClientStub[A](headers: Seq[GrpcHeader])(f: Stub => Future[A])(
+      implicit ec: ExecutionContext): Future[Either[Status, A]] = {
     val metadata = new Metadata()
     headers.foreach(h => metadata.put(Metadata.Key.of(h.name, Metadata.ASCII_STRING_MARSHALLER), h.value))
 

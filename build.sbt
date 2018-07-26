@@ -7,7 +7,7 @@ crossScalaVersions := Seq("2.12.6")
 
 lazy val Versions = new {
   val gpb3Version = "3.5.1"
-  val grpcVersion = "1.11.0"
+  val grpcVersion = "1.13.2"
 
   val akkaHttp = "10.1.1"
 }
@@ -107,6 +107,8 @@ lazy val core = (project in file("core")).settings(
   grpcTestGenSettings,
   name := "grpc-json-bridge-core",
   libraryDependencies ++= Seq(
+    "com.google.protobuf" % "protobuf-java" % Versions.gpb3Version,
+    "com.google.protobuf" % "protobuf-java-util" % Versions.gpb3Version,
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
     "org.typelevel" %% "cats-core" % "1.0.1",
@@ -114,7 +116,7 @@ lazy val core = (project in file("core")).settings(
     "org.slf4j" % "jul-to-slf4j" % "1.7.25",
     "org.slf4j" % "jcl-over-slf4j" % "1.7.25",
     "io.grpc" % "grpc-services" % Versions.grpcVersion % "test",
-    "com.avast.cactus" %% "cactus-grpc-server" % "0.10" % "test"
+    "com.avast.cactus" %% "cactus-grpc-server" % "0.11.1" % "test"
   )
 )
 

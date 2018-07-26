@@ -1,6 +1,6 @@
 package com.avast.grpc.jsonbrige.http4s
 
-import java.util.concurrent.{ExecutorService, Executors}
+import java.util.concurrent.{Executor, Executors}
 
 import cats.data.NonEmptyList
 import cats.effect.IO
@@ -21,7 +21,7 @@ import scala.concurrent.Future
 import scala.util.Random
 
 class Http4sTest extends FunSuite with ScalaFutures {
-  implicit val executor: ExecutorService = Executors.newCachedThreadPool()
+  implicit val executor: Executor = Executors.newCachedThreadPool()
 
   case class MyRequest(names: Seq[String])
 
