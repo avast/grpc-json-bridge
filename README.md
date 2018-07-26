@@ -27,7 +27,7 @@ method is obviously `POST`. The _info_ endpoint is supposed to be exposed on the
 
 #### Gradle
 ```groovy
-compile 'com.avast.grpc:grpc-json-bridge-akkahttp_2.12:x.x.x'
+compile 'com.avast.grpc:grpc-json-bridge-core_2.12:x.x.x'
 ```
 
 #### Gradle
@@ -77,6 +77,7 @@ val bridge = new TestApiServiceImplBase {
 or you can even go with the [Cactus](https://github.com/avast/cactus) and let it map the GPB messages to your case classes:
 ```scala
 import com.avast.grpc.jsonbridge._ // import for the grpc-json-bridge mapping
+import com.avast.cactus.grpc._
 import com.avast.cactus.grpc.server._ // import for the cactus mapping
 
 import com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.{TestApiServiceFutureStub, TestApiServiceImplBase}
@@ -90,12 +91,12 @@ case class MyRequest(names: Seq[String])
 
 case class MyResponse(results: Map[String, Int])
 
-trait MyApi {
-  def get(request: MyRequest): Future[Either[Status, MyResponse]]
+trait MyApi extends GrpcService[Task] {
+  def get(request: MyRequest): Task[Either[Status, MyResponse]]
 }
 
 val service = new MyApi {
-  override def get(request: MyRequest): Future[Either[Status, MyResponse]] = Future.successful {
+  override def get(request: MyRequest): Task[Either[Status, MyResponse]] = Task {
     Right {
       MyResponse {
         Map(
