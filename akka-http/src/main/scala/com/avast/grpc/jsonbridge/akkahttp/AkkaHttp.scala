@@ -5,11 +5,13 @@ import akka.http.scaladsl.model.headers.`Content-Type`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatcher, Route}
 import cats.data.NonEmptyList
-import com.avast.grpc.jsonbridge.GrpcJsonBridge
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcHeader
+import com.avast.grpc.jsonbridge.{GrpcJsonBridge, ToTask}
 import io.grpc.BindableService
 import io.grpc.Status.Code
+import monix.execution.Scheduler
 
+import scala.language.higherKinds
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
@@ -19,8 +21,9 @@ object AkkaHttp {
     ContentType.WithMissingCharset(MediaType.applicationWithOpenCharset("json"))
   }
 
-  def apply(configuration: Configuration)(bridges: GrpcJsonBridge[_ <: BindableService]*): Route = {
-    val services = bridges.map(s => (s.serviceName, s): (String, GrpcJsonBridge[_])).toMap
+  def apply[F[_]: ToTask](configuration: Configuration)(bridges: GrpcJsonBridge[F, _ <: BindableService]*)(
+      implicit sch: Scheduler): Route = {
+    val services = bridges.map(s => (s.serviceName, s): (String, GrpcJsonBridge[F, _])).toMap
 
     val pathPattern = configuration.pathPrefix
       .map {
@@ -42,7 +45,11 @@ object AkkaHttp {
               services.get(serviceName) match {
                 case Some(service) =>
                   entity(as[String]) { json =>
-                    onComplete(service.invokeGrpcMethod(methodName, json, mapHeaders(req.headers))) {
+                    val methodCall = implicitly[ToTask[F]].apply {
+                      service.invokeGrpcMethod(methodName, json, mapHeaders(req.headers))
+                    }.runAsync
+
+                    onComplete(methodCall) {
                       case Success(Right(r)) =>
                         respondWithHeader(JsonContentType) {
                           complete(r)

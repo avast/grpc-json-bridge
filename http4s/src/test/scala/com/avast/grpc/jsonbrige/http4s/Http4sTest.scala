@@ -10,13 +10,14 @@ import com.avast.grpc.jsonbridge.test.TestApi.{GetRequest, GetResponse}
 import com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.{TestApiServiceFutureStub, TestApiServiceImplBase}
 import io.grpc._
 import io.grpc.stub.StreamObserver
+import monix.eval.Task
 import org.http4s.headers.{`Content-Length`, `Content-Type`}
 import org.http4s.{Header, Headers, MediaType, Method, Request, Uri}
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.ScalaFutures
 
 import scala.collection.JavaConverters._
-import scala.concurrent.ExecutionContext.Implicits.global
+import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.Future
 import scala.util.Random
 
@@ -40,7 +41,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
         responseObserver.onNext(GetResponse.newBuilder().putResults("name", 42).build())
         responseObserver.onCompleted()
       }
-    }.createGrpcJsonBridge[TestApiServiceFutureStub]()
+    }.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
 
     val service = Http4s(Configuration.Default)(bridge)
 
@@ -79,7 +80,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
         responseObserver.onNext(GetResponse.newBuilder().putResults("name", 42).build())
         responseObserver.onCompleted()
       }
-    }.createGrpcJsonBridge[TestApiServiceFutureStub]()
+    }.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
 
     val configuration = Configuration.Default.copy(pathPrefix = Some(NonEmptyList.of("abc", "def")))
 
@@ -119,7 +120,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
         responseObserver.onNext(GetResponse.newBuilder().putResults("name", 42).build())
         responseObserver.onCompleted()
       }
-    }.createGrpcJsonBridge[TestApiServiceFutureStub]()
+    }.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
 
     val service = Http4s(Configuration.Default)(bridge)
 
@@ -158,7 +159,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
       override def get(request: GetRequest, responseObserver: StreamObserver[TestApi.GetResponse]): Unit = {
         responseObserver.onError(new StatusException(Status.PERMISSION_DENIED))
       }
-    }.createGrpcJsonBridge[TestApiServiceFutureStub]()
+    }.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
 
     val service = Http4s(Configuration.Default)(bridge)
 
@@ -178,7 +179,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
   }
 
   test("provides service info") {
-    val bridge = new TestApiServiceImplBase {}.createGrpcJsonBridge[TestApiServiceFutureStub]()
+    val bridge = new TestApiServiceImplBase {}.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
 
     val service = Http4s(Configuration.Default)(bridge)
 
@@ -209,7 +210,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
         responseObserver.onNext(GetResponse.newBuilder().putResults("name", 42).build())
         responseObserver.onCompleted()
       }
-    }.createGrpcJsonBridge[TestApiServiceFutureStub](
+    }.createGrpcJsonBridge[Task, TestApiServiceFutureStub](
       new ServerInterceptor {
         override def interceptCall[ReqT, RespT](call: ServerCall[ReqT, RespT],
                                                 headers: Metadata,

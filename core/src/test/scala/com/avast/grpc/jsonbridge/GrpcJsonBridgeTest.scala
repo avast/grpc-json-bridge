@@ -35,13 +35,14 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
         responseObserver.onNext(GetResponse.newBuilder().putResults("name", 42).build())
         responseObserver.onCompleted()
       }
-    }.createGrpcJsonBridge[TestApiServiceFutureStub]()
+    }.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
 
     val Right(response) = bridge
       .invokeGrpcMethod(
         "Get",
         """ { "names": ["abc","def"] } """
       )
+      .runAsync
       .futureValue
 
     assertResult("""{
@@ -56,6 +57,7 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
           "get", // wrong casing
           """ { "names": ["abc","def"] } """
         )
+        .runAsync
         .futureValue
     }
   }
@@ -65,10 +67,11 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
       override def get(request: GetRequest, responseObserver: StreamObserver[TestApi.GetResponse]): Unit = {
         fail()
       }
-    }.createGrpcJsonBridge[TestApiServiceFutureStub]()
+    }.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
 
     val Left(status) = bridge
       .invokeGrpcMethod("Get", "")
+      .runAsync
       .futureValue
 
     assertResult(Status.INVALID_ARGUMENT.getCode)(status.getCode)
@@ -79,10 +82,11 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
       override def get(request: GetRequest, responseObserver: StreamObserver[TestApi.GetResponse]): Unit = {
         sys.error("The failure")
       }
-    }.createGrpcJsonBridge[TestApiServiceFutureStub]()
+    }.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
 
     val Left(status) = bridge
       .invokeGrpcMethod("Get", """ { "names": ["abc","def"] } """)
+      .runAsync
       .futureValue
 
     assertResult(Status.INTERNAL.getCode)(status.getCode)
@@ -108,13 +112,14 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
       override def get2(request: MyRequest): Task[Either[Status, MyResponse]] = Task.now(Left(Status.INTERNAL))
     }.mappedToService[TestApiServiceImplBase]() // cactus mapping
 
-    val bridge = service.createGrpcJsonBridge[TestApiServiceFutureStub]()
+    val bridge = service.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
 
     val Right(response) = bridge
       .invokeGrpcMethod(
         "Get",
         """ { "names": ["abc","def"] } """
       )
+      .runAsync
       .futureValue
 
     assertResult("""{

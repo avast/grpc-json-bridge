@@ -2,25 +2,26 @@ package com.avast.grpc.jsonbrige.http4s
 
 import cats.data.NonEmptyList
 import cats.effect.IO
-import com.avast.grpc.jsonbridge.GrpcJsonBridge
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcHeader
+import com.avast.grpc.jsonbridge.{GrpcJsonBridge, ToTask}
 import com.typesafe.scalalogging.StrictLogging
 import io.grpc.Status.Code
 import io.grpc.{BindableService, Status => GrpcStatus}
+import monix.execution.Scheduler
 import org.http4s.dsl.impl.Root
 import org.http4s.dsl.io._
 import org.http4s.headers.{`Content-Type`, `WWW-Authenticate`}
 import org.http4s.server.middleware.{CORS, CORSConfig}
 import org.http4s.{Challenge, Header, Headers, HttpService, MediaType, Response}
 
-import scala.concurrent.ExecutionContext
+import scala.language.higherKinds
 
 object Http4s extends StrictLogging {
   private val JsonContentType: String = MediaType.`application/json`.renderString
 
-  def apply(configuration: Configuration)(bridges: GrpcJsonBridge[_ <: BindableService]*)(
-      implicit ec: ExecutionContext): HttpService[IO] = {
-    val services = bridges.map(s => (s.serviceName, s): (String, GrpcJsonBridge[_])).toMap
+  def apply[F[_]: ToTask](configuration: Configuration)(bridges: GrpcJsonBridge[F, _ <: BindableService]*)(
+      implicit sch: Scheduler): HttpService[IO] = {
+    val services = bridges.map(s => (s.serviceName, s): (String, GrpcJsonBridge[F, _])).toMap
 
     val pathPrefix = configuration.pathPrefix
       .map(_.foldLeft[Path](Root)(_ / _))
@@ -50,7 +51,8 @@ object Http4s extends StrictLogging {
                   .as[String]
                   .map(service.invokeGrpcMethod(methodName, _, mapHeaders(headers)))
                   .flatMap { f =>
-                    IO.fromFuture(IO(f))
+                    val future = implicitly[ToTask[F]].apply(f).runAsync
+                    IO.fromFuture(IO(future))
                   }
                   .flatMap {
                     case Right(resp) => Ok(resp, `Content-Type`(MediaType.`application/json`))

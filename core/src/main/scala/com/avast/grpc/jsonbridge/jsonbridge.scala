@@ -2,22 +2,30 @@ package com.avast.grpc
 
 import java.util.concurrent.Executor
 
+import cats.arrow.FunctionK
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
 import io.grpc.stub.AbstractStub
 import io.grpc.{BindableService, ServerInterceptor}
+import monix.eval.Task
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.experimental.macros
+import scala.language.higherKinds
 import scala.reflect.ClassTag
 
 package object jsonbridge {
 
+  type ToTask[A[_]] = FunctionK[A, Task]
+
+  implicit val fkTaskIdentity: FunctionK[Task, Task] = FunctionK.id
+
   implicit class DeriveBridge[GrpcServiceStub <: BindableService](val serviceStub: GrpcServiceStub) extends AnyVal {
-    def createGrpcJsonBridge[GrpcClientStub <: AbstractStub[GrpcClientStub]](interceptors: ServerInterceptor*)(
+    def createGrpcJsonBridge[F[_], GrpcClientStub <: AbstractStub[GrpcClientStub]](interceptors: ServerInterceptor*)(
         implicit ec: ExecutionContext,
         ex: Executor,
-        ct: ClassTag[GrpcServiceStub]): GrpcJsonBridge[GrpcServiceStub] =
-      macro Macros.generateGrpcJsonBridge[GrpcServiceStub, GrpcClientStub]
+        ct: ClassTag[GrpcServiceStub],
+        ct2: ClassTag[F[_]]): GrpcJsonBridge[F, GrpcServiceStub] =
+      macro Macros.generateGrpcJsonBridge[F, GrpcServiceStub, GrpcClientStub]
   }
 
   implicit class ListenableFuture2ScalaFuture[T](val f: ListenableFuture[T]) extends AnyVal {
