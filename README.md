@@ -30,7 +30,7 @@ method is obviously `POST`. The _info_ endpoint is supposed to be exposed on the
 compile 'com.avast.grpc:grpc-json-bridge-core_2.12:x.x.x'
 ```
 
-#### Gradle
+#### SBT
 ```scala
 libraryDependencies += "com.avast.grpc" %% "grpc-json-bridge-core" % "x.x.x"
 ```
@@ -72,7 +72,7 @@ val bridge = new TestApiServiceImplBase {
     responseObserver.onNext(GetResponse.newBuilder().putResults("name", 42).build())
     responseObserver.onCompleted()
   }
-}.createGrpcJsonBridge[TestApiServiceFutureStub]() // this does the magic!
+}.createGrpcJsonBridge[Task, TestApiServiceFutureStub]() // this does the magic!
 ```
 or you can even go with the [Cactus](https://github.com/avast/cactus) and let it map the GPB messages to your case classes:
 ```scala
@@ -107,7 +107,7 @@ val service = new MyApi {
   }
 }.mappedToService[TestApiServiceImplBase]() // cactus mapping
 
-val bridge = service.createGrpcJsonBridge[TestApiServiceFutureStub]()
+val bridge = service.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
 ```
 
 ### Calling the bridged service
