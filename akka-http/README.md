@@ -9,7 +9,7 @@ The [gRPC Json Bridge](../README.md) integration with [Akka Http](https://doc.ak
 compile 'com.avast.grpc:grpc-json-bridge-akkahttp_2.12:x.x.x'
 ```
 
-### Gradle
+### SBT
 ```scala
 libraryDependencies += "com.avast.grpc" %% "grpc-json-bridge-akkahttp" % "x.x.x"
 ```
@@ -22,7 +22,9 @@ import com.avast.grpc.jsonbridge.GrpcJsonBridge
 import com.avast.grpc.jsonbridge.akkahttp.{AkkaHttp, Configuration}
 import com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.TestApiServiceImplBase
 
-val bridge: GrpcJsonBridge[TestApiServiceImplBase] = ??? // see core module docs for info about creating the bridge
+implicit val scheduler: monix.execution.Scheduler = ???
+
+val bridge: GrpcJsonBridge[Task, TestApiServiceImplBase] = ??? // see core module docs for info about creating the bridge
 
 val route: Route = AkkaHttp(Configuration.Default)(bridge)
 ```

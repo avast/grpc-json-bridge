@@ -6,6 +6,7 @@ import com.google.protobuf.util.JsonFormat
 import com.typesafe.scalalogging.StrictLogging
 import io.grpc.stub.MetadataUtils
 import io.grpc.{Metadata, Status, StatusException, StatusRuntimeException}
+import monix.eval.Task
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -18,7 +19,7 @@ trait GrpcJsonBridgeBase[Stub <: io.grpc.stub.AbstractStub[Stub]] extends Strict
 
   // https://groups.google.com/forum/#!topic/grpc-io/1-KMubq1tuc
   protected def withNewClientStub[A](headers: Seq[GrpcHeader])(f: Stub => Future[A])(
-      implicit ec: ExecutionContext): Future[Either[Status, A]] = {
+      implicit ec: ExecutionContext): Task[Either[Status, A]] = {
     val metadata = new Metadata()
     headers.foreach(h => metadata.put(Metadata.Key.of(h.name, Metadata.ASCII_STRING_MARSHALLER), h.value))
 
@@ -26,9 +27,10 @@ trait GrpcJsonBridgeBase[Stub <: io.grpc.stub.AbstractStub[Stub]] extends Strict
       .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(metadata))
 
     try {
-      f(clientFutureStub)
+      Task
+        .deferFuture(f(clientFutureStub))
         .map(Right(_))
-        .recover {
+        .onErrorRecover {
           case e: StatusException if e.getStatus.getCode == Status.Code.UNKNOWN => Left(Status.INTERNAL)
           case e: StatusRuntimeException if e.getStatus.getCode == Status.Code.UNKNOWN => Left(Status.INTERNAL)
           case e: StatusException => Left(e.getStatus)
@@ -38,11 +40,11 @@ trait GrpcJsonBridgeBase[Stub <: io.grpc.stub.AbstractStub[Stub]] extends Strict
             Left(Status.INTERNAL.withCause(e))
         }
     } catch {
-      case e: StatusException if e.getStatus.getCode == Status.Code.UNKNOWN => Future.successful(Left(Status.INTERNAL))
-      case e: StatusRuntimeException if e.getStatus.getCode == Status.Code.UNKNOWN => Future.successful(Left(Status.INTERNAL))
+      case e: StatusException if e.getStatus.getCode == Status.Code.UNKNOWN => Task.now(Left(Status.INTERNAL))
+      case e: StatusRuntimeException if e.getStatus.getCode == Status.Code.UNKNOWN => Task.now(Left(Status.INTERNAL))
       case NonFatal(e) =>
         logger.debug("Error while executing the request", e)
-        Future.successful(Left(Status.INTERNAL.withCause(e)))
+        Task.now(Left(Status.INTERNAL.withCause(e)))
     }
 
     // just abandon the stub...
