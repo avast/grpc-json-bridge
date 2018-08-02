@@ -45,11 +45,7 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
       .runAsync
       .futureValue
 
-    assertResult("""{
-                   |  "results": {
-                   |    "name": 42
-                   |  }
-                   |}""".stripMargin)(response)
+    assertResult("""{"results":{"name":42}}""")(response)
 
     assertResult(Left(Status.NOT_FOUND)) {
       bridge
@@ -122,11 +118,7 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
       .runAsync
       .futureValue
 
-    assertResult("""{
-                   |  "results": {
-                   |    "name": 42
-                   |  }
-                   |}""".stripMargin)(response)
+    assertResult("""{"results":{"name":42}}""")(response)
   }
 
 }

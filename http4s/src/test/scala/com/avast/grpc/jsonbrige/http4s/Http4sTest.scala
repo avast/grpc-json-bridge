@@ -59,11 +59,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
 
     assertResult(org.http4s.Status.Ok)(response.status)
 
-    assertResult("""{
-                   |  "results": {
-                   |    "name": 42
-                   |  }
-                   |}""".stripMargin)(response.as[String].unsafeRunSync())
+    assertResult("""{"results":{"name":42}}""")(response.as[String].unsafeRunSync())
 
     assertResult(
       Headers(
@@ -99,11 +95,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
 
     assertResult(org.http4s.Status.Ok)(response.status)
 
-    assertResult("""{
-                   |  "results": {
-                   |    "name": 42
-                   |  }
-                   |}""".stripMargin)(response.as[String].unsafeRunSync())
+    assertResult("""{"results":{"name":42}}""")(response.as[String].unsafeRunSync())
 
     assertResult(
       Headers(

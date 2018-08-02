@@ -46,11 +46,7 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
       .withHeaders(AkkaHttp.JsonContentType) ~> route ~> check {
       assertResult(StatusCodes.OK)(status)
 
-      assertResult("""{
-                     |  "results": {
-                     |    "name": 42
-                     |  }
-                     |}""".stripMargin)(responseAs[String])
+      assertResult("""{"results":{"name":42}}""")(responseAs[String])
 
       assertResult(Seq(`Content-Type`(ContentType.WithMissingCharset(MediaType.applicationWithOpenCharset("json")))))(headers)
     }
@@ -73,11 +69,7 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
       .withHeaders(AkkaHttp.JsonContentType) ~> route ~> check {
       assertResult(StatusCodes.OK)(status)
 
-      assertResult("""{
-                     |  "results": {
-                     |    "name": 42
-                     |  }
-                     |}""".stripMargin)(responseAs[String])
+      assertResult("""{"results":{"name":42}}""")(responseAs[String])
     }
   }
 
@@ -163,11 +155,7 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
       .withHeaders(AkkaHttp.JsonContentType, customHeaderToBeSent) ~> route ~> check {
       assertResult(StatusCodes.OK)(status)
 
-      assertResult("""{
-                     |  "results": {
-                     |    "name": 42
-                     |  }
-                     |}""".stripMargin)(responseAs[String])
+      assertResult("""{"results":{"name":42}}""")(responseAs[String])
 
       assertResult(Seq(`Content-Type`(ContentType.WithMissingCharset(MediaType.applicationWithOpenCharset("json")))))(headers)
     }
