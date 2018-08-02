@@ -16,6 +16,8 @@ import scala.util.control.NonFatal
 trait GrpcJsonBridgeBase[Stub <: io.grpc.stub.AbstractStub[Stub]] extends StrictLogging {
 
   protected def newFutureStub: Stub
+  protected val parser: JsonFormat.Parser = JsonFormat.parser()
+  protected val printer: JsonFormat.Printer = JsonFormat.printer().includingDefaultValueFields().omittingInsignificantWhitespace()
 
   // https://groups.google.com/forum/#!topic/grpc-io/1-KMubq1tuc
   protected def withNewClientStub[A](headers: Seq[GrpcHeader])(f: Stub => Future[A])(
@@ -53,7 +55,7 @@ trait GrpcJsonBridgeBase[Stub <: io.grpc.stub.AbstractStub[Stub]] extends Strict
   protected def fromJson[Gpb <: Message](inst: Gpb, json: String): Either[Status, Gpb] = {
     try {
       val builder = inst.newBuilderForType()
-      JsonFormat.parser().merge(json, builder)
+      parser.merge(json, builder)
       Right {
         builder.build().asInstanceOf[Gpb]
       }
@@ -66,6 +68,6 @@ trait GrpcJsonBridgeBase[Stub <: io.grpc.stub.AbstractStub[Stub]] extends Strict
   }
 
   protected def toJson(resp: Message): String = {
-    JsonFormat.printer().print(resp)
+    printer.print(resp)
   }
 }
