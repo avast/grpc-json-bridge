@@ -64,7 +64,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
     assertResult(
       Headers(
         `Content-Type`(MediaType.`application/json`),
-        `Content-Length`.fromLong(37).getOrElse(fail())
+        `Content-Length`.fromLong(23).getOrElse(fail())
       ))(response.headers)
 
   }
@@ -100,7 +100,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
     assertResult(
       Headers(
         `Content-Type`(MediaType.`application/json`),
-        `Content-Length`.fromLong(37).getOrElse(fail())
+        `Content-Length`.fromLong(23).getOrElse(fail())
       ))(response.headers)
 
   }
