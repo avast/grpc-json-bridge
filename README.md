@@ -121,3 +121,7 @@ or get info about exposed service:
 ```
 curl -X GET http://localhost:9999/com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.TestApiServiceImplBase
 ```
+or list available services:
+```
+curl -X GET http://localhost:9999/
+```
