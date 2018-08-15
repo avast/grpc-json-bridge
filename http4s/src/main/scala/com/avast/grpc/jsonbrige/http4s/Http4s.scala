@@ -37,7 +37,7 @@ object Http4s extends StrictLogging {
               service.methodsNames.mkString("\n")
             }
 
-          case None => NotFound()
+          case None => NotFound(s"Service '$serviceName' not found")
         }
 
       case _ @ GET -> `pathPrefix` =>
@@ -62,10 +62,10 @@ object Http4s extends StrictLogging {
                     case Left(st) => mapStatus(st, configuration)
                   }
 
-              case None => NotFound()
+              case None => NotFound(s"Service '$serviceName' not found")
             }
 
-          case _ => BadRequest()
+          case _ => BadRequest(s"Content-Type must be '$JsonContentType'")
         }
     }
 
