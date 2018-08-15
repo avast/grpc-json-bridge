@@ -59,11 +59,11 @@ object AkkaHttp {
                     }
                   }
 
-                case None => complete(StatusCodes.NotFound(s"Service '$serviceName' not found"))
+                case None => complete(StatusCodes.NotFound, s"Service '$serviceName' not found")
               }
 
             case _ =>
-              complete(StatusCodes.BadRequest(s"Content-Type must be '$JsonContentType'"))
+              complete(StatusCodes.BadRequest, s"Content-Type must be '$JsonContentType'")
           }
         }
       }
@@ -73,7 +73,7 @@ object AkkaHttp {
           case Some(service) =>
             complete(service.methodsNames.mkString("\n"))
 
-          case None => complete(StatusCodes.NotFound(s"Service '$serviceName' not found"))
+          case None => complete(StatusCodes.NotFound, s"Service '$serviceName' not found")
         }
       }
     } ~ get {
