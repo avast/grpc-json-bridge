@@ -81,7 +81,7 @@ class Macros(val c: blackbox.Context) {
           implicitly[_root_.cats.arrow.FunctionK[Task, $fType]].apply(task)
         }
 
-        override val serviceInfo: _root_.scala.Seq[String] = ${serviceInfo(serviceType)}
+        override val methodsNames: _root_.scala.Seq[String] = ${methodsNames(serviceType)}
 
         override val serviceName: String = ${serviceImplBaseTypeParent.companion}.SERVICE_NAME
 
@@ -139,7 +139,7 @@ class Macros(val c: blackbox.Context) {
      """
   }
 
-  private def serviceInfo(serviceType: c.Type): c.Tree = {
+  private def methodsNames(serviceType: c.Type): c.Tree = {
     q"""{
           import scala.collection.JavaConverters._
 

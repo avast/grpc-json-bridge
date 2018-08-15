@@ -71,10 +71,14 @@ object AkkaHttp {
       path(Segment) { serviceName =>
         services.get(serviceName) match {
           case Some(service) =>
-            complete(service.serviceInfo.mkString("\n"))
+            complete(service.methodsNames.mkString("\n"))
 
           case None => complete(StatusCodes.NotFound)
         }
+      }
+    } ~ get {
+      path(PathEnd) {
+        complete(services.values.flatMap(s => s.methodsNames).mkString("\n"))
       }
     }
   }

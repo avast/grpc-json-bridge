@@ -188,6 +188,24 @@ class Http4sTest extends FunSuite with ScalaFutures {
       response.as[String].unsafeRunSync())
   }
 
+  test("provides services info") {
+    val bridge = new TestApiServiceImplBase {}.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
+
+    val service = Http4s(Configuration.Default)(bridge)
+
+    val Some(response) = service
+      .apply(
+        Request[IO](method = Method.GET, uri = Uri.fromString("/").getOrElse(fail()))
+      )
+      .value
+      .unsafeRunSync()
+
+    assertResult(org.http4s.Status.Ok)(response.status)
+
+    assertResult("com.avast.grpc.jsonbridge.test.TestApiService/Get\ncom.avast.grpc.jsonbridge.test.TestApiService/Get2")(
+      response.as[String].unsafeRunSync())
+  }
+
   test("passes user headers") {
     val headerValue = Random.alphanumeric.take(10).mkString("")
 

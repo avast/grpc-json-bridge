@@ -30,15 +30,18 @@ object Http4s extends StrictLogging {
     logger.info(s"Creating HTTP4S service proxying gRPC services: ${bridges.map(_.serviceName).mkString("[", ", ", "]")}")
 
     val http4sService = HttpService[IO] {
-      case _ @GET -> `pathPrefix` / serviceName =>
+      case _ @ GET -> `pathPrefix` / serviceName =>
         services.get(serviceName) match {
           case Some(service) =>
             Ok {
-              service.serviceInfo.mkString("\n")
+              service.methodsNames.mkString("\n")
             }
 
           case None => NotFound()
         }
+
+      case _ @ GET -> `pathPrefix` =>
+        Ok { services.values.flatMap(s => s.methodsNames).mkString("\n") }
 
       case request @ POST -> `pathPrefix` / serviceName / methodName =>
         val headers = request.headers

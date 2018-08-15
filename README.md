@@ -67,12 +67,13 @@ import io.grpc.stub.StreamObserver
 
 implicit val executor: ExecutionContextExecutorService = ???
 
-val bridge = new TestApiServiceImplBase {
-  override def get(request: GetRequest, responseObserver: StreamObserver[TestApi.GetResponse]): Unit = {
-    responseObserver.onNext(GetResponse.newBuilder().putResults("name", 42).build())
-    responseObserver.onCompleted()
-  }
-}.createGrpcJsonBridge[Task, TestApiServiceFutureStub]() // this does the magic!
+val service = new TestApiServiceImplBase {
+                override def get(request: GetRequest, responseObserver: StreamObserver[TestApi.GetResponse]): Unit = {
+                  responseObserver.onNext(GetResponse.newBuilder().putResults("name", 42).build())
+                  responseObserver.onCompleted()
+                }
+              }
+val bridge = service.createGrpcJsonBridge[Task, TestApiServiceFutureStub]() // this does the magic!
 ```
 or you can even go with the [Cactus](https://github.com/avast/cactus) and let it map the GPB messages to your case classes:
 ```scala
@@ -113,11 +114,14 @@ val bridge = service.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
 ### Calling the bridged service
 
 You can use e.g. cURL command to call the `Get` method
-
 ```
 curl -X POST -H "Content-Type: application/json" --data " { \"names\": [\"abc\",\"def\"] } " http://localhost:9999/com.avast.grpc.jsonbridge.test.TestApiServiceGrpc/Get
 ```
 or get info about exposed service:
 ```
 curl -X GET http://localhost:9999/com.avast.grpc.jsonbridge.test.TestApiServiceGrpc
+```
+or list available services:
+```
+curl -X GET http://localhost:9999/
 ```

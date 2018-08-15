@@ -124,6 +124,19 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
     }
   }
 
+  test("provides services description") {
+    val bridge = new TestApiServiceImplBase {}.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
+
+    val route = AkkaHttp(Configuration.Default)(bridge)(implicitly[ToTask[Task]], monix.execution.Scheduler.Implicits.global)
+
+    Get("/") ~> route ~> check {
+      assertResult(StatusCodes.OK)(status)
+
+      assertResult("com.avast.grpc.jsonbridge.test.TestApiService/Get\ncom.avast.grpc.jsonbridge.test.TestApiService/Get2")(
+        responseAs[String])
+    }
+  }
+
   test("passes headers") {
     val headerValue = Random.alphanumeric.take(10).mkString("")
 

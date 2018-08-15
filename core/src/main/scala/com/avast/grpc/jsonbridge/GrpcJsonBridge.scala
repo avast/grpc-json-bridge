@@ -17,7 +17,7 @@ trait GrpcJsonBridge[F[_], Service <: BindableService] extends AutoCloseable {
 
   /** Returns sequence of method names supported by this `GrpcJsonBridge`.
     */
-  def serviceInfo: Seq[String]
+  def methodsNames: Seq[String]
 
   /** Returns name of the service (FQN).
     */
