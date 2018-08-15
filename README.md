@@ -115,9 +115,9 @@ val bridge = service.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
 You can use e.g. cURL command to call the `Get` method
 
 ```
-curl -X POST -H "Content-Type: application/json" --data " { \"names\": [\"abc\",\"def\"] } " http://localhost:9999/com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.TestApiServiceImplBase/Get
+curl -X POST -H "Content-Type: application/json" --data " { \"names\": [\"abc\",\"def\"] } " http://localhost:9999/com.avast.grpc.jsonbridge.test.TestApiServiceGrpc/Get
 ```
 or get info about exposed service:
 ```
-curl -X GET http://localhost:9999/com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.TestApiServiceImplBase
+curl -X GET http://localhost:9999/com.avast.grpc.jsonbridge.test.TestApiServiceGrpc
 ```
