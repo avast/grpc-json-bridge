@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.{ContentType, HttpHeader, MediaType, StatusCodes
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import cats.data.NonEmptyList
 import com.avast.grpc.jsonbridge._
-import com.avast.grpc.jsonbridge.test.TestApi
+import com.avast.grpc.jsonbridge.test.{TestApi, TestApiService}
 import com.avast.grpc.jsonbridge.test.TestApi.{GetRequest, GetResponse}
 import com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.{TestApiServiceFutureStub, TestApiServiceImplBase}
 import io.grpc._
@@ -42,15 +42,11 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
 
     val route = AkkaHttp[Task](Configuration.Default)(bridge)(implicitly[ToTask[Task]], monix.execution.Scheduler.Implicits.global)
 
-    Post(s"/${classOf[TestApiServiceImplBase].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """)
+    Post(s"/${classOf[TestApiService].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """)
       .withHeaders(AkkaHttp.JsonContentType) ~> route ~> check {
       assertResult(StatusCodes.OK)(status)
 
-      assertResult("""{
-                     |  "results": {
-                     |    "name": 42
-                     |  }
-                     |}""".stripMargin)(responseAs[String])
+      assertResult("""{"results":{"name":42}}""")(responseAs[String])
 
       assertResult(Seq(`Content-Type`(ContentType.WithMissingCharset(MediaType.applicationWithOpenCharset("json")))))(headers)
     }
@@ -69,15 +65,11 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
 
     val route = AkkaHttp(configuration)(bridge)(implicitly[ToTask[Task]], monix.execution.Scheduler.Implicits.global)
 
-    Post(s"/abc/def/${classOf[TestApiServiceImplBase].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """)
+    Post(s"/abc/def/${classOf[TestApiService].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """)
       .withHeaders(AkkaHttp.JsonContentType) ~> route ~> check {
       assertResult(StatusCodes.OK)(status)
 
-      assertResult("""{
-                     |  "results": {
-                     |    "name": 42
-                     |  }
-                     |}""".stripMargin)(responseAs[String])
+      assertResult("""{"results":{"name":42}}""")(responseAs[String])
     }
   }
 
@@ -93,13 +85,13 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
     val route = AkkaHttp(Configuration.Default)(bridge)(implicitly[ToTask[Task]], monix.execution.Scheduler.Implicits.global)
 
     // empty body
-    Post(s"/${classOf[TestApiServiceImplBase].getName.replace("$", ".")}/Get", "")
+    Post(s"/${classOf[TestApiService].getName.replace("$", ".")}/Get", "")
       .withHeaders(AkkaHttp.JsonContentType) ~> route ~> check {
       assertResult(StatusCodes.BadRequest)(status)
     }
 
     // no Content-Type header
-    Post(s"/${classOf[TestApiServiceImplBase].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """) ~> route ~> check {
+    Post(s"/${classOf[TestApiService].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """) ~> route ~> check {
       assertResult(StatusCodes.BadRequest)(status)
     }
   }
@@ -113,7 +105,7 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
 
     val route = AkkaHttp(Configuration.Default)(bridge)(implicitly[ToTask[Task]], monix.execution.Scheduler.Implicits.global)
 
-    Post(s"/${classOf[TestApiServiceImplBase].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """)
+    Post(s"/${classOf[TestApiService].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """)
       .withHeaders(AkkaHttp.JsonContentType) ~> route ~> check {
       assertResult(status)(StatusCodes.Forbidden)
     }
@@ -124,10 +116,11 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
 
     val route = AkkaHttp(Configuration.Default)(bridge)(implicitly[ToTask[Task]], monix.execution.Scheduler.Implicits.global)
 
-    Get(s"/${classOf[TestApiServiceImplBase].getName.replace("$", ".")}") ~> route ~> check {
+    Get(s"/${classOf[TestApiService].getName.replace("$", ".")}") ~> route ~> check {
       assertResult(StatusCodes.OK)(status)
 
-      assertResult("TestApiService/Get\nTestApiService/Get2")(responseAs[String])
+      assertResult("com.avast.grpc.jsonbridge.test.TestApiService/Get\ncom.avast.grpc.jsonbridge.test.TestApiService/Get2")(
+        responseAs[String])
     }
   }
 
@@ -159,21 +152,17 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
 
     val Ok(customHeaderToBeSent, _) = HttpHeader.parse("The-Header", headerValue)
 
-    Post(s"/${classOf[TestApiServiceImplBase].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """)
+    Post(s"/${classOf[TestApiService].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """)
       .withHeaders(AkkaHttp.JsonContentType, customHeaderToBeSent) ~> route ~> check {
       assertResult(StatusCodes.OK)(status)
 
-      assertResult("""{
-                     |  "results": {
-                     |    "name": 42
-                     |  }
-                     |}""".stripMargin)(responseAs[String])
+      assertResult("""{"results":{"name":42}}""")(responseAs[String])
 
       assertResult(Seq(`Content-Type`(ContentType.WithMissingCharset(MediaType.applicationWithOpenCharset("json")))))(headers)
     }
 
     // missing the user header
-    Post(s"/${classOf[TestApiServiceImplBase].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """)
+    Post(s"/${classOf[TestApiService].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """)
       .withHeaders(AkkaHttp.JsonContentType) ~> route ~> check {
       assertResult(StatusCodes.InternalServerError)(status) // because there was failed `assertResult`
     }

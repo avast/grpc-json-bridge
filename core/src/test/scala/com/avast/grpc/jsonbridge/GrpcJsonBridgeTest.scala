@@ -1,6 +1,7 @@
 package com.avast.grpc.jsonbridge
 
 import com.avast.cactus.grpc.server.GrpcService
+import com.avast.grpc.jsonbridge.internalPackage.MyServiceImpl
 import com.avast.grpc.jsonbridge.test.TestApi
 import com.avast.grpc.jsonbridge.test.TestApi.{GetRequest, GetResponse}
 import com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.{TestApiServiceFutureStub, TestApiServiceImplBase}
@@ -13,6 +14,14 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Milliseconds, Seconds, Span}
 
 import scala.collection.JavaConverters._
+
+package internalPackage {
+  // this is here to test that package from PROTO fgile is used as "serviceName"
+  class MyServiceImpl extends TestApiServiceImplBase with FakeImplBase
+
+  // this is here to prevent wrong impl base detection
+  trait FakeImplBase
+}
 
 class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
 
@@ -29,8 +38,8 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
   }
 
   test("basic") {
-    val bridge = new TestApiServiceImplBase {
-      override def get(request: GetRequest, responseObserver: StreamObserver[TestApi.GetResponse]): Unit = {
+    val bridge = new MyServiceImpl {
+      override def get(request: GetRequest, responseObserver: StreamObserver[GetResponse]): Unit = {
         assertResult(Seq("abc", "def"))(request.getNamesList.asScala)
         responseObserver.onNext(GetResponse.newBuilder().putResults("name", 42).build())
         responseObserver.onCompleted()
@@ -45,11 +54,7 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
       .runAsync
       .futureValue
 
-    assertResult("""{
-                   |  "results": {
-                   |    "name": 42
-                   |  }
-                   |}""".stripMargin)(response)
+    assertResult("""{"results":{"name":42}}""")(response)
 
     assertResult(Left(Status.NOT_FOUND)) {
       bridge
@@ -60,6 +65,8 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
         .runAsync
         .futureValue
     }
+
+    assertResult("com.avast.grpc.jsonbridge.test.TestApiService")(bridge.serviceName)
   }
 
   test("bad request") {
@@ -122,11 +129,7 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
       .runAsync
       .futureValue
 
-    assertResult("""{
-                   |  "results": {
-                   |    "name": 42
-                   |  }
-                   |}""".stripMargin)(response)
+    assertResult("""{"results":{"name":42}}""")(response)
   }
 
 }

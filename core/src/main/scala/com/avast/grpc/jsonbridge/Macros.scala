@@ -22,6 +22,25 @@ class Macros(val c: blackbox.Context) {
     val serviceType = handleCactusType(serviceTypeRaw)
     val fType = extractSymbolFromClassTag(ct2).typeSymbol
 
+    val serviceImplBaseType = serviceType.baseClasses
+      .collectFirst {
+        case c: TypeSymbol if c.fullName.endsWith("ImplBase") && c.isClass && !c.asClass.isTrait => c.asClass
+      }
+      .getOrElse(c.abort(c.enclosingPosition, s"Could not extract *ImplBase from $serviceType"))
+
+    val serviceImplBaseTypeParent = convertToType {
+      serviceImplBaseType.fullName
+        .split("\\.")
+        .dropRight(1)
+        .mkString(".")
+    }
+
+    serviceImplBaseTypeParent.companion.members
+      .collectFirst {
+        case s if s.name.toString == "SERVICE_NAME" => s
+      }
+      .getOrElse(c.abort(c.enclosingPosition, s"Could not extract SERVICE_NAME from $serviceImplBaseTypeParent"))
+
     val channelName = UUID.randomUUID().toString
 
     val stub = {
@@ -64,7 +83,7 @@ class Macros(val c: blackbox.Context) {
 
         override val serviceInfo: _root_.scala.Seq[String] = ${serviceInfo(serviceType)}
 
-        override val serviceName: String = ${serviceType.toString}
+        override val serviceName: String = ${serviceImplBaseTypeParent.companion}.SERVICE_NAME
 
         override def close: Unit = {
           clientsChannel.shutdownNow()
@@ -75,6 +94,10 @@ class Macros(val c: blackbox.Context) {
       """
 
     c.Expr[GrpcJsonBridge[F, GrpcServiceStub]](t)
+  }
+
+  private def convertToType(typeFQN: String): Type = {
+    c.typecheck(c.parse(s"???.asInstanceOf[$typeFQN]")).tpe
   }
 
   private def getMethodCases(fType: Symbol, serviceType: Type): Iterable[c.Tree] = {
