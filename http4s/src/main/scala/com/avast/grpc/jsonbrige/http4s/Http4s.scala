@@ -17,7 +17,6 @@ import org.http4s.{Challenge, Header, Headers, HttpService, MediaType, Response}
 import scala.language.higherKinds
 
 object Http4s extends StrictLogging {
-  private val JsonContentType: String = MediaType.`application/json`.renderString
 
   def apply[F[_]: ToTask](configuration: Configuration)(bridges: GrpcJsonBridge[F, _ <: BindableService]*)(
       implicit sch: Scheduler): HttpService[IO] = {
@@ -45,27 +44,31 @@ object Http4s extends StrictLogging {
 
       case request @ POST -> `pathPrefix` / serviceName / methodName =>
         val headers = request.headers
-
         headers.get(`Content-Type`.name) match {
-          case Some(Header(`Content-Type`.name, `JsonContentType`)) =>
-            services.get(serviceName) match {
-              case Some(service) =>
-                request
-                  .as[String]
-                  .map(service.invokeGrpcMethod(methodName, _, mapHeaders(headers)))
-                  .flatMap { f =>
-                    val future = implicitly[ToTask[F]].apply(f).runAsync
-                    IO.fromFuture(IO(future))
-                  }
-                  .flatMap {
-                    case Right(resp) => Ok(resp, `Content-Type`(MediaType.`application/json`))
-                    case Left(st) => mapStatus(st, configuration)
-                  }
+          case Some(Header(_, contentTypeValue)) =>
+            `Content-Type`.parse(contentTypeValue) match {
+              case Right(`Content-Type`(MediaType.`application/json`, _)) =>
+                services.get(serviceName) match {
+                  case Some(service) =>
+                    request
+                      .as[String]
+                      .map(service.invokeGrpcMethod(methodName, _, mapHeaders(headers)))
+                      .flatMap { f =>
+                        val future = implicitly[ToTask[F]].apply(f).runAsync
+                        IO.fromFuture(IO(future))
+                      }
+                      .flatMap {
+                        case Right(resp) => Ok(resp, `Content-Type`(MediaType.`application/json`))
+                        case Left(st) => mapStatus(st, configuration)
+                      }
 
-              case None => NotFound(s"Service '$serviceName' not found")
+                  case None => NotFound(s"Service '$serviceName' not found")
+                }
+
+              case _ => BadRequest(s"Content-Type must be '${MediaType.`application/json`}', it's '$contentTypeValue'")
             }
 
-          case _ => BadRequest(s"Content-Type must be '$JsonContentType'")
+          case _ => BadRequest(s"Content-Type must be '${MediaType.`application/json`}'")
         }
     }
 

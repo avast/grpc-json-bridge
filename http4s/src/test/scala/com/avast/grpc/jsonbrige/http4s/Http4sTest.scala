@@ -13,7 +13,7 @@ import io.grpc.stub.StreamObserver
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.http4s.headers.{`Content-Length`, `Content-Type`}
-import org.http4s.{Header, Headers, MediaType, Method, Request, Uri}
+import org.http4s.{Charset, Header, Headers, MediaType, Method, Request, Uri}
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.ScalaFutures
 
@@ -52,7 +52,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
           uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail())
         ).withBody(""" { "names": ["abc","def"] } """)
           .unsafeRunSync()
-          .withContentType(`Content-Type`(MediaType.`application/json`))
+          .withContentType(`Content-Type`(MediaType.`application/json`, Charset.`UTF-8`))
       )
       .value
       .unsafeRunSync()
