@@ -17,10 +17,9 @@ import scala.util.control.NonFatal
 
 /** This is trait for internal usage. You should not use it directly.
   */
-trait GrpcJsonBridgeBase[F[_], Stub <: io.grpc.stub.AbstractStub[Stub]] extends StrictLogging {
+abstract class GrpcJsonBridgeBase[F[_], Stub <: io.grpc.stub.AbstractStub[Stub]](implicit protected val F: Async[F]) extends StrictLogging {
 
   protected def newFutureStub: Stub
-  protected implicit def F: Async[F]
   protected val parser: JsonFormat.Parser = JsonFormat.parser()
   protected val printer: JsonFormat.Printer = JsonFormat.printer().includingDefaultValueFields().omittingInsignificantWhitespace()
 

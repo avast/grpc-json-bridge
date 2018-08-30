@@ -51,7 +51,7 @@ class Macros(val c: blackbox.Context) {
 
     val t =
       q"""
-      new _root_.com.avast.grpc.jsonbridge.GrpcJsonBridge[$fType, $serviceTypeRaw] with _root_.com.avast.grpc.jsonbridge.GrpcJsonBridgeBase[$fType, $clientType] {
+      new _root_.com.avast.grpc.jsonbridge.GrpcJsonBridgeBase[$fType, $clientType]()($asf) with _root_.com.avast.grpc.jsonbridge.GrpcJsonBridge[$fType, $serviceTypeRaw] {
         import _root_.com.avast.grpc.jsonbridge._
         import _root_.cats.instances.future._
         import _root_.cats.data._
@@ -62,8 +62,6 @@ class Macros(val c: blackbox.Context) {
 
         private val clientsChannel: _root_.io.grpc.ManagedChannel = ${createClientsChannel(channelName)}
         private val server: _root_.io.grpc.Server = ${startServer(channelName)}
-
-        override protected val F = $asf
 
         override protected def newFutureStub: $clientType = $stub
 
