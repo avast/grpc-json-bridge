@@ -16,10 +16,6 @@ import scala.reflect.ClassTag
 
 package object jsonbridge {
 
-  type ToTask[A[_]] = FunctionK[A, Task]
-
-  implicit val fkTaskIdentity: FunctionK[Task, Task] = FunctionK.id
-
   implicit class DeriveBridge[GrpcServiceStub <: BindableService](val serviceStub: GrpcServiceStub) extends AnyVal {
     def createGrpcJsonBridge[F[_], GrpcClientStub <: AbstractStub[GrpcClientStub]](interceptors: ServerInterceptor*)(
         implicit ec: ExecutionContext,
