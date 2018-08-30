@@ -2,14 +2,14 @@ package com.avast.grpc
 
 import java.util.concurrent.Executor
 
-import cats.arrow.FunctionK
-import cats.effect.{Async, Effect}
-import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
+import cats.effect.Async
+import cats.~>
+import com.google.common.util.concurrent._
+import io.grpc._
 import io.grpc.stub.AbstractStub
-import io.grpc.{BindableService, ServerInterceptor}
-import monix.eval.Task
+import mainecoon.FunctorK
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent._
 import scala.language.experimental.macros
 import scala.language.higherKinds
 import scala.reflect.ClassTag
@@ -38,5 +38,25 @@ package object jsonbridge {
       p.future
     }
   }
+
+  implicit class GrpcJsonBridgeOps[F[_], Service <: BindableService](val bridge: GrpcJsonBridge[F, Service]) extends AnyVal {
+    def mapK[G[_]](implicit fToG: ~>[F, G]): GrpcJsonBridge[G, Service] = bridgeFunctorK[Service].mapK(bridge)(fToG)
+  }
+
+  implicit def bridgeFunctorK[Service <: BindableService]: FunctorK[GrpcJsonBridge[?[_], Service]] =
+    new FunctorK[GrpcJsonBridge[?[_], Service]] {
+      override def mapK[F[_], G[_]](bridge: GrpcJsonBridge[F, Service])(fToG: ~>[F, G]): GrpcJsonBridge[G, Service] =
+        new GrpcJsonBridge[G, Service] {
+          override def invokeGrpcMethod(name: String,
+                                        json: => String,
+                                        headers: => Seq[GrpcJsonBridge.GrpcHeader]): G[Either[Status, String]] = fToG {
+            bridge.invokeGrpcMethod(name, json, headers)
+          }
+          override def methodsNames: Seq[String] = bridge.methodsNames
+
+          override def serviceName: String = bridge.serviceName
+          override def close(): Unit = bridge.close()
+        }
+    }
 
 }

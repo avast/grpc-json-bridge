@@ -1,5 +1,6 @@
 package com.avast.grpc.jsonbridge
 
+import cats.~>
 import com.avast.cactus.grpc.server.GrpcService
 import com.avast.grpc.jsonbridge.internalPackage.MyServiceImpl
 import com.avast.grpc.jsonbridge.test.TestApi
@@ -11,9 +12,10 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.time.{Milliseconds, Seconds, Span}
+import org.scalatest.time._
 
 import scala.collection.JavaConverters._
+import scala.concurrent.Future
 
 package internalPackage {
   // this is here to test that package from PROTO fgile is used as "serviceName"
@@ -132,4 +134,16 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
     assertResult("""{"results":{"name":42}}""")(response)
   }
 
+  test("functorK") {
+    assertCompiles(
+      """
+        |val bridge: GrpcJsonBridge[Task, MyServiceImpl] = new MyServiceImpl {
+        |  override def get(request: GetRequest, responseObserver: StreamObserver[GetResponse]): Unit = {}
+        |}.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
+        |
+        |implicit val taskToFuture: Task ~> Future = new ~>[Task, Future] { override def apply[A](fa: Task[A]): Future[A] = fa.runAsync }
+        |
+        |val bridgeFuture: GrpcJsonBridge[Future, MyServiceImpl] = bridge.mapK[Future]
+      """.stripMargin)
+  }
 }
