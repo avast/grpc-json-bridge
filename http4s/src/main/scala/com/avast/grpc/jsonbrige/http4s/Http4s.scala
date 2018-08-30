@@ -8,7 +8,6 @@ import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcHeader
 import com.typesafe.scalalogging.StrictLogging
 import io.grpc.Status.Code
 import io.grpc.{BindableService, Status => GrpcStatus}
-import monix.execution.Scheduler
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.{`Content-Type`, `WWW-Authenticate`}
 import org.http4s.server.middleware.{CORS, CORSConfig}
@@ -18,12 +17,11 @@ import scala.language.higherKinds
 
 object Http4s extends StrictLogging {
 
-  def apply[F[_]: Sync](configuration: Configuration)(bridges: GrpcJsonBridge[F, _ <: BindableService]*)(
-      implicit sch: Scheduler): HttpService[F] = {
+  def apply[F[_]: Sync](configuration: Configuration)(bridges: GrpcJsonBridge[F, _ <: BindableService]*): HttpService[F] = {
     implicit val h: Http4sDsl[F] = Http4sDsl[F]
     import h._
 
-    val services = bridges.map(s => (s.serviceName, s): (String, GrpcJsonBridge[F, _])).toMap
+    val bridgesMap = bridges.map(s => (s.serviceName, s): (String, GrpcJsonBridge[F, _])).toMap
 
     val pathPrefix = configuration.pathPrefix
       .map(_.foldLeft[Path](Root)(_ / _))
@@ -33,7 +31,7 @@ object Http4s extends StrictLogging {
 
     val http4sService = HttpService[F] {
       case _ @GET -> `pathPrefix` / serviceName if serviceName.nonEmpty =>
-        services.get(serviceName) match {
+        bridgesMap.get(serviceName) match {
           case Some(service) =>
             Ok {
               service.methodsNames.mkString("\n")
@@ -43,7 +41,7 @@ object Http4s extends StrictLogging {
         }
 
       case _ @GET -> `pathPrefix` =>
-        Ok { services.values.flatMap(s => s.methodsNames).mkString("\n") }
+        Ok { bridgesMap.values.flatMap(s => s.methodsNames).mkString("\n") }
 
       case request @ POST -> `pathPrefix` / serviceName / methodName =>
         val headers = request.headers
@@ -51,7 +49,7 @@ object Http4s extends StrictLogging {
           case Some(Header(_, contentTypeValue)) =>
             `Content-Type`.parse(contentTypeValue) match {
               case Right(`Content-Type`(MediaType.`application/json`, _)) =>
-                services.get(serviceName) match {
+                bridgesMap.get(serviceName) match {
                   case Some(service) =>
                     request
                       .as[String]
