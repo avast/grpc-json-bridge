@@ -3,6 +3,7 @@ package com.avast.grpc
 import java.util.concurrent.Executor
 
 import cats.arrow.FunctionK
+import cats.effect.{Async, Effect}
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
 import io.grpc.stub.AbstractStub
 import io.grpc.{BindableService, ServerInterceptor}
@@ -24,7 +25,8 @@ package object jsonbridge {
         implicit ec: ExecutionContext,
         ex: Executor,
         ct: ClassTag[GrpcServiceStub],
-        ct2: ClassTag[F[_]]): GrpcJsonBridge[F, GrpcServiceStub] =
+        ct2: ClassTag[F[_]],
+        asf: Async[F]): GrpcJsonBridge[F, GrpcServiceStub] =
       macro Macros.generateGrpcJsonBridge[F, GrpcServiceStub, GrpcClientStub]
   }
 

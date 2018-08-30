@@ -2,16 +2,18 @@ package com.avast.grpc.jsonbridge.akkahttp
 
 import akka.http.scaladsl.model.HttpHeader.ParsingResult.Ok
 import akka.http.scaladsl.model.headers.`Content-Type`
-import akka.http.scaladsl.model.{ContentType, HttpHeader, MediaType, StatusCodes}
+import akka.http.scaladsl.model._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import cats.data.NonEmptyList
+import cats.effect.Effect
 import com.avast.grpc.jsonbridge._
-import com.avast.grpc.jsonbridge.test.{TestApi, TestApiService}
 import com.avast.grpc.jsonbridge.test.TestApi.{GetRequest, GetResponse}
 import com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.{TestApiServiceFutureStub, TestApiServiceImplBase}
+import com.avast.grpc.jsonbridge.test.{TestApi, TestApiService}
 import io.grpc._
 import io.grpc.stub.StreamObserver
 import monix.eval.Task
+import monix.execution.Scheduler
 import org.scalatest.FunSuite
 
 import scala.collection.JavaConverters._
@@ -20,6 +22,9 @@ import scala.concurrent.Future
 import scala.util.Random
 
 class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
+
+  // this is workaround which solves presence of ExecutionContextExecutor in RouteTest from AKKA
+  private implicit val taskEff: Effect[Task] = Task.catsEffect(Scheduler.global)
 
   case class MyRequest(names: Seq[String])
 

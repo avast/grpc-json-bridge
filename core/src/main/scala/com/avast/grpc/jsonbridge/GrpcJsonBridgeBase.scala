@@ -1,27 +1,32 @@
 package com.avast.grpc.jsonbridge
 
+import cats.effect.{Async, Effect}
+import cats.syntax.all._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcHeader
 import com.google.protobuf.Message
 import com.google.protobuf.util.JsonFormat
 import com.typesafe.scalalogging.StrictLogging
+import io.grpc._
 import io.grpc.stub.MetadataUtils
-import io.grpc.{Metadata, Status, StatusException, StatusRuntimeException}
 import monix.eval.Task
+import monix.execution.Scheduler
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.language.higherKinds
 import scala.util.control.NonFatal
 
 /** This is trait for internal usage. You should not use it directly.
   */
-trait GrpcJsonBridgeBase[Stub <: io.grpc.stub.AbstractStub[Stub]] extends StrictLogging {
+trait GrpcJsonBridgeBase[F[_], Stub <: io.grpc.stub.AbstractStub[Stub]] extends StrictLogging {
 
   protected def newFutureStub: Stub
+  protected implicit def F: Async[F]
   protected val parser: JsonFormat.Parser = JsonFormat.parser()
   protected val printer: JsonFormat.Printer = JsonFormat.printer().includingDefaultValueFields().omittingInsignificantWhitespace()
 
   // https://groups.google.com/forum/#!topic/grpc-io/1-KMubq1tuc
   protected def withNewClientStub[A](headers: Seq[GrpcHeader])(f: Stub => Future[A])(
-      implicit ec: ExecutionContext): Task[Either[Status, A]] = {
+      implicit ec: ExecutionContext): F[Either[Status, A]] = {
     val metadata = new Metadata()
     headers.foreach(h => metadata.put(Metadata.Key.of(h.name, Metadata.ASCII_STRING_MARSHALLER), h.value))
 
@@ -31,8 +36,9 @@ trait GrpcJsonBridgeBase[Stub <: io.grpc.stub.AbstractStub[Stub]] extends Strict
     try {
       Task
         .deferFuture(f(clientFutureStub))
-        .map(Right(_))
-        .onErrorRecover {
+        .to[F](F, Scheduler(ec))
+        .map(Right(_): Either[Status, A])
+        .recover {
           case e: StatusException if e.getStatus.getCode == Status.Code.UNKNOWN => Left(Status.INTERNAL)
           case e: StatusRuntimeException if e.getStatus.getCode == Status.Code.UNKNOWN => Left(Status.INTERNAL)
           case e: StatusException => Left(e.getStatus)
@@ -42,11 +48,11 @@ trait GrpcJsonBridgeBase[Stub <: io.grpc.stub.AbstractStub[Stub]] extends Strict
             Left(Status.INTERNAL.withCause(e))
         }
     } catch {
-      case e: StatusException if e.getStatus.getCode == Status.Code.UNKNOWN => Task.now(Left(Status.INTERNAL))
-      case e: StatusRuntimeException if e.getStatus.getCode == Status.Code.UNKNOWN => Task.now(Left(Status.INTERNAL))
+      case e: StatusException if e.getStatus.getCode == Status.Code.UNKNOWN => F.pure(Left(Status.INTERNAL))
+      case e: StatusRuntimeException if e.getStatus.getCode == Status.Code.UNKNOWN => F.pure(Left(Status.INTERNAL))
       case NonFatal(e) =>
         logger.debug("Error while executing the request", e)
-        Task.now(Left(Status.INTERNAL.withCause(e)))
+        F.pure(Left(Status.INTERNAL.withCause(e)))
     }
 
     // just abandon the stub...
