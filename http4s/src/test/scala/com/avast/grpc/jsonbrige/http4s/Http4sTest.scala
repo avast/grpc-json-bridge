@@ -3,7 +3,6 @@ package com.avast.grpc.jsonbrige.http4s
 import java.util.concurrent.{Executor, Executors}
 
 import cats.data.NonEmptyList
-import cats.effect.IO
 import com.avast.grpc.jsonbridge._
 import com.avast.grpc.jsonbridge.test.TestApi.{GetRequest, GetResponse}
 import com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.{TestApiServiceFutureStub, TestApiServiceImplBase}
@@ -47,19 +46,21 @@ class Http4sTest extends FunSuite with ScalaFutures {
 
     val Some(response) = service
       .apply(
-        Request[IO](
+        Request[Task](
           method = Method.POST,
           uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail())
         ).withBody(""" { "names": ["abc","def"] } """)
-          .unsafeRunSync()
+          .runAsync
+          .futureValue
           .withContentType(`Content-Type`(MediaType.`application/json`, Charset.`UTF-8`))
       )
       .value
-      .unsafeRunSync()
+      .runAsync
+      .futureValue
 
     assertResult(org.http4s.Status.Ok)(response.status)
 
-    assertResult("""{"results":{"name":42}}""")(response.as[String].unsafeRunSync())
+    assertResult("""{"results":{"name":42}}""")(response.as[String].runAsync.futureValue)
 
     assertResult(
       Headers(
@@ -84,18 +85,20 @@ class Http4sTest extends FunSuite with ScalaFutures {
 
     val Some(response) = service
       .apply(
-        Request[IO](method = Method.POST,
-                    uri = Uri.fromString(s"/abc/def/${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail()))
+        Request[Task](method = Method.POST,
+                      uri = Uri.fromString(s"/abc/def/${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail()))
           .withBody(""" { "names": ["abc","def"] } """)
-          .unsafeRunSync()
+          .runAsync
+          .futureValue
           .withContentType(`Content-Type`(MediaType.`application/json`))
       )
       .value
-      .unsafeRunSync()
+      .runAsync
+      .futureValue
 
     assertResult(org.http4s.Status.Ok)(response.status)
 
-    assertResult("""{"results":{"name":42}}""")(response.as[String].unsafeRunSync())
+    assertResult("""{"results":{"name":42}}""")(response.as[String].runAsync.futureValue)
 
     assertResult(
       Headers(
@@ -119,14 +122,16 @@ class Http4sTest extends FunSuite with ScalaFutures {
     { // empty body
       val Some(response) = service
         .apply(
-          Request[IO](method = Method.POST,
-                      uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail()))
+          Request[Task](method = Method.POST,
+                        uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail()))
             .withBody("")
-            .unsafeRunSync()
+            .runAsync
+            .futureValue
             .withContentType(`Content-Type`(MediaType.`application/json`))
         )
         .value
-        .unsafeRunSync()
+        .runAsync
+        .futureValue
 
       assertResult(org.http4s.Status.BadRequest)(response.status)
     }
@@ -134,13 +139,15 @@ class Http4sTest extends FunSuite with ScalaFutures {
     {
       val Some(response) = service
         .apply(
-          Request[IO](method = Method.POST,
-                      uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail()))
+          Request[Task](method = Method.POST,
+                        uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail()))
             .withBody(""" { "names": ["abc","def"] } """)
-            .unsafeRunSync()
+            .runAsync
+            .futureValue
         )
         .value
-        .unsafeRunSync()
+        .runAsync
+        .futureValue
 
       assertResult(org.http4s.Status.BadRequest)(response.status)
     }
@@ -157,14 +164,15 @@ class Http4sTest extends FunSuite with ScalaFutures {
 
     val Some(response) = service
       .apply(
-        Request[IO](method = Method.POST,
-                    uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail()))
+        Request[Task](method = Method.POST,
+                      uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail()))
           .withBody(""" { "names": ["abc","def"] } """)
-          .unsafeRunSync()
+          .runAsync
+          .futureValue
           .withContentType(`Content-Type`(MediaType.`application/json`))
       )
       .value
-      .unsafeToFuture()
+      .runAsync
       .futureValue
 
     assertResult(org.http4s.Status.Forbidden)(response.status)
@@ -177,15 +185,16 @@ class Http4sTest extends FunSuite with ScalaFutures {
 
     val Some(response) = service
       .apply(
-        Request[IO](method = Method.GET, uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}").getOrElse(fail()))
+        Request[Task](method = Method.GET, uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}").getOrElse(fail()))
       )
       .value
-      .unsafeRunSync()
+      .runAsync
+      .futureValue
 
     assertResult(org.http4s.Status.Ok)(response.status)
 
     assertResult("com.avast.grpc.jsonbridge.test.TestApiService/Get\ncom.avast.grpc.jsonbridge.test.TestApiService/Get2")(
-      response.as[String].unsafeRunSync())
+      response.as[String].runAsync.futureValue)
   }
 
   test("provides services info") {
@@ -195,15 +204,16 @@ class Http4sTest extends FunSuite with ScalaFutures {
 
     val Some(response) = service
       .apply(
-        Request[IO](method = Method.GET, uri = Uri.fromString("/").getOrElse(fail()))
+        Request[Task](method = Method.GET, uri = Uri.fromString("/").getOrElse(fail()))
       )
       .value
-      .unsafeRunSync()
+      .runAsync
+      .futureValue
 
     assertResult(org.http4s.Status.Ok)(response.status)
 
     assertResult("com.avast.grpc.jsonbridge.test.TestApiService/Get\ncom.avast.grpc.jsonbridge.test.TestApiService/Get2")(
-      response.as[String].unsafeRunSync())
+      response.as[String].runAsync.futureValue)
   }
 
   test("passes user headers") {
@@ -214,6 +224,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
 
     val bridge = new TestApiServiceImplBase {
       override def get(request: GetRequest, responseObserver: StreamObserver[TestApi.GetResponse]): Unit = {
+        // NOTE: there is exception with this failed assert in the log; however it's fina - it's really missing during the first call
         assertResult(headerValue)(ctxKey.get())
 
         assertResult(Seq("abc", "def"))(request.getNamesList.asScala)
@@ -236,16 +247,18 @@ class Http4sTest extends FunSuite with ScalaFutures {
     {
       val Some(response) = service
         .apply(
-          Request[IO](
+          Request[Task](
             method = Method.POST,
             uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail()),
             headers = Headers(Header("The-Header", headerValue))
           ).withBody(""" { "names": ["abc","def"] } """)
-            .unsafeRunSync()
+            .runAsync
+            .futureValue
             .withContentType(`Content-Type`(MediaType.`application/json`))
         )
         .value
-        .unsafeRunSync()
+        .runAsync
+        .futureValue
 
       assertResult(org.http4s.Status.Ok)(response.status)
     }
@@ -253,14 +266,16 @@ class Http4sTest extends FunSuite with ScalaFutures {
     {
       val Some(response) = service
         .apply(
-          Request[IO](method = Method.POST,
-                      uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail()))
+          Request[Task](method = Method.POST,
+                        uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail()))
             .withBody(""" { "names": ["abc","def"] } """)
-            .unsafeRunSync()
+            .runAsync
+            .futureValue
             .withContentType(`Content-Type`(MediaType.`application/json`))
         )
         .value
-        .unsafeRunSync()
+        .runAsync
+        .futureValue
 
       assertResult(org.http4s.Status.InternalServerError)(response.status) // because of failed assertResult
     }

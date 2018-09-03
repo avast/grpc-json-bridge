@@ -15,7 +15,7 @@ class Macros(val c: blackbox.Context) {
   import c.universe._
 
   def generateGrpcJsonBridge[F[_], GrpcServiceStub <: BindableService, GrpcClientStub <: AbstractStub[GrpcClientStub]: WeakTypeTag](
-      interceptors: c.Tree*)(ec: c.Tree, ex: c.Tree, ct: c.Tree, ct2: c.Tree): c.Expr[GrpcJsonBridge[F, GrpcServiceStub]] = {
+      interceptors: c.Tree*)(ec: c.Tree, ex: c.Tree, ct: c.Tree, ct2: c.Tree, asf: c.Tree): c.Expr[GrpcJsonBridge[F, GrpcServiceStub]] = {
 
     val clientType = weakTypeOf[GrpcClientStub]
     val serviceTypeRaw = extractSymbolFromClassTag(ct)
@@ -51,7 +51,7 @@ class Macros(val c: blackbox.Context) {
 
     val t =
       q"""
-      new _root_.com.avast.grpc.jsonbridge.GrpcJsonBridge[$fType, $serviceTypeRaw] with _root_.com.avast.grpc.jsonbridge.GrpcJsonBridgeBase[$clientType] {
+      new _root_.com.avast.grpc.jsonbridge.GrpcJsonBridgeBase[$fType, $clientType]()($asf) with _root_.com.avast.grpc.jsonbridge.GrpcJsonBridge[$fType, $serviceTypeRaw] {
         import _root_.com.avast.grpc.jsonbridge._
         import _root_.cats.instances.future._
         import _root_.cats.data._
@@ -68,17 +68,15 @@ class Macros(val c: blackbox.Context) {
         override def invokeGrpcMethod(name: String,
                                       json: => String,
                                       headers: => _root_.scala.Seq[com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcHeader]): $fType[_root_.scala.Either[_root_.io.grpc.Status, String]] = {
-          val task = try {
+          try {
             name match {
               case ..$methodCases
               // unsupported method
-              case _ => monix.eval.Task.now(_root_.scala.Left(_root_.io.grpc.Status.NOT_FOUND))
+              case _ => F.pure(_root_.scala.Left(_root_.io.grpc.Status.NOT_FOUND))
             }
           } catch {
-            case _root_.scala.util.control.NonFatal(e) => _root_.monix.eval.Task.now(_root_.scala.Left(_root_.io.grpc.Status.INTERNAL))
+            case _root_.scala.util.control.NonFatal(e) => F.pure(_root_.scala.Left(_root_.io.grpc.Status.INTERNAL))
           }
-
-          implicitly[_root_.cats.arrow.FunctionK[Task, $fType]].apply(task)
         }
 
         override val methodsNames: _root_.scala.Seq[String] = ${methodsNames(serviceType)}
@@ -110,7 +108,7 @@ class Macros(val c: blackbox.Context) {
           cq"""
           ${firstUpper(name.toString)} =>
             (for {
-              request <- _root_.cats.data.EitherT.fromEither[_root_.monix.eval.Task](fromJson(${request.companion}.getDefaultInstance, json))
+              request <- _root_.cats.data.EitherT.fromEither[$fType](fromJson(${request.companion}.getDefaultInstance, json))
               result <- _root_.cats.data.EitherT {
                           withNewClientStub(headers) { _.$name(request).asScala(executor).map(toJson(_)) }
                         }

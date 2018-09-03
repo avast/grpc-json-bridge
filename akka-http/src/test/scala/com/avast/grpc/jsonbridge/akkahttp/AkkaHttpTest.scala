@@ -2,16 +2,18 @@ package com.avast.grpc.jsonbridge.akkahttp
 
 import akka.http.scaladsl.model.HttpHeader.ParsingResult.Ok
 import akka.http.scaladsl.model.headers.`Content-Type`
-import akka.http.scaladsl.model.{ContentType, HttpHeader, MediaType, StatusCodes}
+import akka.http.scaladsl.model._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import cats.data.NonEmptyList
+import cats.effect.Effect
 import com.avast.grpc.jsonbridge._
-import com.avast.grpc.jsonbridge.test.{TestApi, TestApiService}
 import com.avast.grpc.jsonbridge.test.TestApi.{GetRequest, GetResponse}
 import com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.{TestApiServiceFutureStub, TestApiServiceImplBase}
+import com.avast.grpc.jsonbridge.test.{TestApi, TestApiService}
 import io.grpc._
 import io.grpc.stub.StreamObserver
 import monix.eval.Task
+import monix.execution.Scheduler
 import org.scalatest.FunSuite
 
 import scala.collection.JavaConverters._
@@ -20,6 +22,9 @@ import scala.concurrent.Future
 import scala.util.Random
 
 class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
+
+  // this is workaround which solves presence of ExecutionContextExecutor in RouteTest from AKKA
+  private implicit val taskEff: Effect[Task] = Task.catsEffect(Scheduler.global)
 
   case class MyRequest(names: Seq[String])
 
@@ -40,7 +45,7 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
       }
     }.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
 
-    val route = AkkaHttp[Task](Configuration.Default)(bridge)(implicitly[ToTask[Task]], monix.execution.Scheduler.Implicits.global)
+    val route = AkkaHttp[Task](Configuration.Default)(bridge)
 
     Post(s"/${classOf[TestApiService].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """)
       .withHeaders(AkkaHttp.JsonContentType) ~> route ~> check {
@@ -63,7 +68,7 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
 
     val configuration = Configuration.Default.copy(pathPrefix = Some(NonEmptyList.of("abc", "def")))
 
-    val route = AkkaHttp(configuration)(bridge)(implicitly[ToTask[Task]], monix.execution.Scheduler.Implicits.global)
+    val route = AkkaHttp(configuration)(bridge)
 
     Post(s"/abc/def/${classOf[TestApiService].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """)
       .withHeaders(AkkaHttp.JsonContentType) ~> route ~> check {
@@ -82,7 +87,7 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
       }
     }.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
 
-    val route = AkkaHttp(Configuration.Default)(bridge)(implicitly[ToTask[Task]], monix.execution.Scheduler.Implicits.global)
+    val route = AkkaHttp(Configuration.Default)(bridge)
 
     // empty body
     Post(s"/${classOf[TestApiService].getName.replace("$", ".")}/Get", "")
@@ -103,7 +108,7 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
       }
     }.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
 
-    val route = AkkaHttp(Configuration.Default)(bridge)(implicitly[ToTask[Task]], monix.execution.Scheduler.Implicits.global)
+    val route = AkkaHttp(Configuration.Default)(bridge)
 
     Post(s"/${classOf[TestApiService].getName.replace("$", ".")}/Get", """ { "names": ["abc","def"] } """)
       .withHeaders(AkkaHttp.JsonContentType) ~> route ~> check {
@@ -114,7 +119,7 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
   test("provides service description") {
     val bridge = new TestApiServiceImplBase {}.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
 
-    val route = AkkaHttp(Configuration.Default)(bridge)(implicitly[ToTask[Task]], monix.execution.Scheduler.Implicits.global)
+    val route = AkkaHttp(Configuration.Default)(bridge)
 
     Get(s"/${classOf[TestApiService].getName.replace("$", ".")}") ~> route ~> check {
       assertResult(StatusCodes.OK)(status)
@@ -127,7 +132,7 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
   test("provides services description") {
     val bridge = new TestApiServiceImplBase {}.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
 
-    val route = AkkaHttp(Configuration.Default)(bridge)(implicitly[ToTask[Task]], monix.execution.Scheduler.Implicits.global)
+    val route = AkkaHttp(Configuration.Default)(bridge)
 
     Get("/") ~> route ~> check {
       assertResult(StatusCodes.OK)(status)
@@ -161,7 +166,7 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
       }
     )
 
-    val route = AkkaHttp(Configuration.Default)(bridge)(implicitly[ToTask[Task]], monix.execution.Scheduler.Implicits.global)
+    val route = AkkaHttp(Configuration.Default)(bridge)
 
     val Ok(customHeaderToBeSent, _) = HttpHeader.parse("The-Header", headerValue)
 

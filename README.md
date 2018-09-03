@@ -10,6 +10,10 @@ For requests/responses mapping a [standard GPB <-> JSON mapping](https://develop
 It uses Scala macros for creating mapping between runtime-provided service and method names to pregenerated Java gRPC classes. In case you
 don't want to use _plain Java API_ you can easily use it together with [Cactus](https://github.com/avast/cactus).
 
+The API is _finally tagless_ (read more e.g. [here](https://www.beyondthelines.net/programming/introduction-to-tagless-final/))
+meaning it can use whatever [`F[_]: cats.effect.Effect`](https://typelevel.org/cats-effect/typeclasses/effect.html)
+(e.g. `cats.effect.IO`, `monix.eval.Task`).
+
 There are several modules:
 1. core - for basic implementation-agnostic usage
 1. [http4s](http4s) - integration with [http4s](https://http4s.org/) webserver

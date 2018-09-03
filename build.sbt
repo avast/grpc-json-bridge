@@ -26,6 +26,7 @@ lazy val javaSettings = Seq(
 
 lazy val macroSettings = Seq(
   addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full),
+  addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.7" cross CrossVersion.binary),
   libraryDependencies ++= Seq(
     "org.scala-lang" % "scala-reflect" % scalaVersion.value,
     "org.scala-lang" % "scala-compiler" % scalaVersion.value
@@ -112,7 +113,8 @@ lazy val core = (project in file("core")).settings(
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
     "org.typelevel" %% "cats-core" % "1.2.0",
-    "io.monix" % "monix_2.12" % "3.0.0-RC1",
+    "io.monix" %% "monix" % "3.0.0-RC1",
+    "com.kailuowang" %% "mainecoon-core" % "0.6.4",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0",
     "org.slf4j" % "jul-to-slf4j" % "1.7.25",
     "org.slf4j" % "jcl-over-slf4j" % "1.7.25",

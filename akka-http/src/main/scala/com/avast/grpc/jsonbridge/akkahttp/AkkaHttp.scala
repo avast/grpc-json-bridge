@@ -5,12 +5,15 @@ import akka.http.scaladsl.model.headers.`Content-Type`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatcher, Route}
 import cats.data.NonEmptyList
+import cats.effect.Effect
+import com.avast.grpc.jsonbridge.GrpcJsonBridge
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcHeader
-import com.avast.grpc.jsonbridge.{GrpcJsonBridge, ToTask}
 import io.grpc.BindableService
 import io.grpc.Status.Code
+import monix.eval.Task
 import monix.execution.Scheduler
 
+import scala.concurrent.ExecutionContext
 import scala.language.higherKinds
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
@@ -21,9 +24,11 @@ object AkkaHttp {
     ContentType.WithMissingCharset(MediaType.applicationWithOpenCharset("json"))
   }
 
-  def apply[F[_]: ToTask](configuration: Configuration)(bridges: GrpcJsonBridge[F, _ <: BindableService]*)(
-      implicit sch: Scheduler): Route = {
-    val services = bridges.map(s => (s.serviceName, s): (String, GrpcJsonBridge[F, _])).toMap
+  def apply[F[_]: Effect](configuration: Configuration)(bridges: GrpcJsonBridge[F, _ <: BindableService]*)(
+      implicit ec: ExecutionContext): Route = {
+    implicit val sch: Scheduler = Scheduler(ec)
+
+    val bridgesMap = bridges.map(s => (s.serviceName, s): (String, GrpcJsonBridge[F, _])).toMap
 
     val pathPattern = configuration.pathPrefix
       .map {
@@ -42,12 +47,13 @@ object AkkaHttp {
         extractRequest { req =>
           req.header[`Content-Type`] match {
             case Some(`JsonContentType`) =>
-              services.get(serviceName) match {
+              bridgesMap.get(serviceName) match {
                 case Some(service) =>
                   entity(as[String]) { json =>
-                    val methodCall = implicitly[ToTask[F]].apply {
-                      service.invokeGrpcMethod(methodName, json, mapHeaders(req.headers))
-                    }.runAsync
+                    val methodCall =
+                      Task.fromEffect {
+                        service.invokeGrpcMethod(methodName, json, mapHeaders(req.headers))
+                      }.runAsync
 
                     onComplete(methodCall) {
                       case Success(Right(r)) =>
@@ -69,7 +75,7 @@ object AkkaHttp {
       }
     } ~ get {
       path(Segment) { serviceName =>
-        services.get(serviceName) match {
+        bridgesMap.get(serviceName) match {
           case Some(service) =>
             complete(service.methodsNames.mkString("\n"))
 
@@ -78,7 +84,7 @@ object AkkaHttp {
       }
     } ~ get {
       path(PathEnd) {
-        complete(services.values.flatMap(s => s.methodsNames).mkString("\n"))
+        complete(bridgesMap.values.flatMap(s => s.methodsNames).mkString("\n"))
       }
     }
   }
