@@ -41,8 +41,6 @@ class Macros(val c: blackbox.Context) {
       }
       .getOrElse(c.abort(c.enclosingPosition, s"Could not extract SERVICE_NAME from $serviceImplBaseTypeParent"))
 
-    val channelName = UUID.randomUUID().toString
-
     val stub = {
       q" ${clientType.typeSymbol.owner}.newFutureStub(clientsChannel) "
     }
@@ -60,8 +58,10 @@ class Macros(val c: blackbox.Context) {
 
         private val serviceInstance: _root_.io.grpc.ServerServiceDefinition = { _root_.io.grpc.ServerInterceptors.intercept($getVariable, Seq[_root_.io.grpc.ServerInterceptor](..$interceptors): _*) }
 
-        private val clientsChannel: _root_.io.grpc.ManagedChannel = ${createClientsChannel(channelName)}
-        private val server: _root_.io.grpc.Server = ${startServer(channelName)}
+        private val channelName = _root_.java.util.UUID.randomUUID().toString
+
+        private val clientsChannel: _root_.io.grpc.ManagedChannel = ${createClientsChannel()}
+        private val server: _root_.io.grpc.Server = ${startServer()}
 
         override protected def newFutureStub: $clientType = $stub
 
@@ -117,10 +117,10 @@ class Macros(val c: blackbox.Context) {
       }
   }
 
-  private def startServer(channelName: String): c.Tree = {
+  private def startServer(): c.Tree = {
     q"""
       _root_.io.grpc.inprocess.InProcessServerBuilder
-        .forName($channelName)
+        .forName(channelName)
         .executor(executor)
         .addService(serviceInstance)
         .build
@@ -128,10 +128,10 @@ class Macros(val c: blackbox.Context) {
      """
   }
 
-  private def createClientsChannel(channelName: String): c.Tree = {
+  private def createClientsChannel(): c.Tree = {
     q"""
       _root_.io.grpc.inprocess.InProcessChannelBuilder
-        .forName($channelName)
+        .forName(channelName)
         .executor(executor)
         .build()
      """
