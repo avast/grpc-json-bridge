@@ -1,6 +1,6 @@
 package com.avast.grpc.jsonbridge
 
-import cats.effect.{Async, Effect}
+import cats.effect.Async
 import cats.syntax.all._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcHeader
 import com.google.protobuf.Message
@@ -21,7 +21,9 @@ abstract class GrpcJsonBridgeBase[F[_], Stub <: io.grpc.stub.AbstractStub[Stub]]
 
   protected def newFutureStub: Stub
   protected val parser: JsonFormat.Parser = JsonFormat.parser()
-  protected val printer: JsonFormat.Printer = JsonFormat.printer().includingDefaultValueFields().omittingInsignificantWhitespace()
+  protected val printer: JsonFormat.Printer = {
+    JsonFormat.printer().includingDefaultValueFields().omittingInsignificantWhitespace().preservingProtoFieldNames()
+  }
 
   // https://groups.google.com/forum/#!topic/grpc-io/1-KMubq1tuc
   protected def withNewClientStub[A](headers: Seq[GrpcHeader])(f: Stub => Future[A])(
