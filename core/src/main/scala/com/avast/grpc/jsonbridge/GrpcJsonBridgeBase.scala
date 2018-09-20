@@ -22,7 +22,7 @@ abstract class GrpcJsonBridgeBase[F[_], Stub <: io.grpc.stub.AbstractStub[Stub]]
   protected def newFutureStub: Stub
   protected val parser: JsonFormat.Parser = JsonFormat.parser()
   protected val printer: JsonFormat.Printer = {
-    JsonFormat.printer().includingDefaultValueFields().omittingInsignificantWhitespace().preservingProtoFieldNames()
+    JsonFormat.printer().includingDefaultValueFields().omittingInsignificantWhitespace()
   }
 
   // https://groups.google.com/forum/#!topic/grpc-io/1-KMubq1tuc
