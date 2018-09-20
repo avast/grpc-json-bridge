@@ -16,6 +16,7 @@ import org.scalatest.time._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.Future
+import scala.language.higherKinds
 
 package internalPackage {
   // this is here to test that package from PROTO fgile is used as "serviceName"
@@ -33,10 +34,10 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
 
   case class MyResponse(results: Map[String, Int])
 
-  trait MyApi extends GrpcService[Task] {
-    def get(request: MyRequest): Task[Either[Status, MyResponse]]
+  trait MyApi[F[_]] extends GrpcService {
+    def get(request: MyRequest): F[Either[Status, MyResponse]]
 
-    def get2(request: MyRequest): Task[Either[Status, MyResponse]]
+    def get2(request: MyRequest): F[Either[Status, MyResponse]]
   }
 
   test("basic") {
@@ -105,7 +106,7 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
     import com.avast.cactus.grpc._
     import com.avast.cactus.grpc.server._
 
-    val service = new MyApi {
+    val service = new MyApi[Task] {
       override def get(request: MyRequest): Task[Either[Status, MyResponse]] = Task {
         assertResult(MyRequest(Seq("abc", "def")))(request)
 
