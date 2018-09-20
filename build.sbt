@@ -7,9 +7,9 @@ crossScalaVersions := Seq("2.12.6")
 
 lazy val Versions = new {
   val gpb3Version = "3.6.1"
-  val grpcVersion = "1.14.0"
+  val grpcVersion = "1.15.0"
 
-  val akkaHttp = "10.1.3"
+  val akkaHttp = "10.1.5"
 }
 
 lazy val scalaSettings = Seq(
@@ -119,7 +119,7 @@ lazy val core = (project in file("core")).settings(
     "org.slf4j" % "jul-to-slf4j" % "1.7.25",
     "org.slf4j" % "jcl-over-slf4j" % "1.7.25",
     "io.grpc" % "grpc-services" % Versions.grpcVersion % "test",
-    "com.avast.cactus" %% "cactus-grpc-server" % "0.11.2" % "test"
+    "com.avast.cactus" %% "cactus-grpc-server" % "0.12.2" % "test"
   )
 )
 
@@ -130,8 +130,8 @@ lazy val http4s = (project in file("http4s")).settings(
   grpcTestGenSettings,
   name := "grpc-json-bridge-http4s",
   libraryDependencies ++= Seq(
-    "org.http4s" %% "http4s-dsl" % "0.18.15",
-    "org.http4s" %% "http4s-blaze-server" % "0.18.15"
+    "org.http4s" %% "http4s-dsl" % "0.18.18",
+    "org.http4s" %% "http4s-blaze-server" % "0.18.18"
   ),
   scalacOptions += "-Ypartial-unification"
 ).dependsOn(core)
@@ -144,7 +144,7 @@ lazy val akkaHttp = (project in file("akka-http")).settings(
   name := "grpc-json-bridge-akkahttp",
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-http" % Versions.akkaHttp,
-    "com.typesafe.akka" %% "akka-stream" % "2.5.14",
+    "com.typesafe.akka" %% "akka-stream" % "2.5.16",
     "com.typesafe.akka" %% "akka-http-testkit" % Versions.akkaHttp % "test"
   ),
 ).dependsOn(core)
