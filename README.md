@@ -25,6 +25,8 @@ also provides their list to make possible to implement an _info_ endpoint (which
 Recommended URL pattern for exposing the service (and the one used in provided implementations) is `/$SERVICENAME/$METHOD` name and the http
 method is obviously `POST`. The _info_ endpoint is supposed to be exposed on the `/$SERVICENAME` URL and available with `GET` request.
 
+The bridge passes all received headers from JSON request to the gRPC service so it's not any problem to use it e.g. authentication.
+
 ## Core module
 
 ### Dependency
