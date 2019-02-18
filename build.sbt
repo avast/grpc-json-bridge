@@ -3,17 +3,17 @@ import sbt.Keys.libraryDependencies
 
 val logger: Logger = ConsoleLogger()
 
-crossScalaVersions := Seq("2.12.6")
+crossScalaVersions := Seq("2.12.7")
 
 lazy val Versions = new {
   val gpb3Version = "3.6.1"
-  val grpcVersion = "1.15.0"
+  val grpcVersion = "1.18.0"
 
-  val akkaHttp = "10.1.5"
+  val akkaHttp = "10.1.5" // DO NOT upgrade to 10.1.[67] - will cause https://github.com/scala/community-builds/issues/825
 }
 
 lazy val scalaSettings = Seq(
-  scalaVersion := "2.12.6",
+  scalaVersion := "2.12.7",
   scalacOptions += "-deprecation",
   scalacOptions += "-unchecked",
   scalacOptions += "-feature"
@@ -112,14 +112,14 @@ lazy val core = (project in file("core")).settings(
     "com.google.protobuf" % "protobuf-java-util" % Versions.gpb3Version,
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
-    "org.typelevel" %% "cats-core" % "1.2.0",
+    "org.typelevel" %% "cats-core" % "1.5.0",
     "io.monix" %% "monix" % "3.0.0-RC1",
     "com.kailuowang" %% "mainecoon-core" % "0.6.4",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0",
     "org.slf4j" % "jul-to-slf4j" % "1.7.25",
     "org.slf4j" % "jcl-over-slf4j" % "1.7.25",
     "io.grpc" % "grpc-services" % Versions.grpcVersion % "test",
-    "com.avast.cactus" %% "cactus-grpc-server" % "0.12.2" % "test"
+    "com.avast.cactus" %% "cactus-grpc-server" % "0.13.0" % "test"
   )
 )
 
@@ -130,8 +130,8 @@ lazy val http4s = (project in file("http4s")).settings(
   grpcTestGenSettings,
   name := "grpc-json-bridge-http4s",
   libraryDependencies ++= Seq(
-    "org.http4s" %% "http4s-dsl" % "0.18.18",
-    "org.http4s" %% "http4s-blaze-server" % "0.18.18"
+    "org.http4s" %% "http4s-dsl" % "0.18.22",
+    "org.http4s" %% "http4s-blaze-server" % "0.18.22"
   ),
   scalacOptions += "-Ypartial-unification"
 ).dependsOn(core)
@@ -144,7 +144,7 @@ lazy val akkaHttp = (project in file("akka-http")).settings(
   name := "grpc-json-bridge-akkahttp",
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-http" % Versions.akkaHttp,
-    "com.typesafe.akka" %% "akka-stream" % "2.5.16",
+    "com.typesafe.akka" %% "akka-stream" % "2.5.21",
     "com.typesafe.akka" %% "akka-http-testkit" % Versions.akkaHttp % "test"
   ),
 ).dependsOn(core)
