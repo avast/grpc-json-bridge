@@ -6,8 +6,8 @@ val logger: Logger = ConsoleLogger()
 crossScalaVersions := Seq("2.12.7")
 
 lazy val Versions = new {
-  val gpb3Version = "3.6.1"
-  val grpcVersion = "1.18.0"
+  val gpb3Version = "3.7.1"
+  val grpcVersion = "1.20.0"
 
   val akkaHttp = "10.1.5" // DO NOT upgrade to 10.1.[67] - will cause https://github.com/scala/community-builds/issues/825
 }
@@ -115,11 +115,11 @@ lazy val core = (project in file("core")).settings(
     "org.typelevel" %% "cats-core" % "1.5.0",
     "io.monix" %% "monix" % "3.0.0-RC1",
     "com.kailuowang" %% "mainecoon-core" % "0.6.4",
-    "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0",
-    "org.slf4j" % "jul-to-slf4j" % "1.7.25",
-    "org.slf4j" % "jcl-over-slf4j" % "1.7.25",
+    "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
+    "org.slf4j" % "jul-to-slf4j" % "1.7.26",
+    "org.slf4j" % "jcl-over-slf4j" % "1.7.26",
     "io.grpc" % "grpc-services" % Versions.grpcVersion % "test",
-    "com.avast.cactus" %% "cactus-grpc-server" % "0.13.0" % "test"
+    "com.avast.cactus" %% "cactus-grpc-server" % "0.15.1" % "test"
   )
 )
 
@@ -130,8 +130,8 @@ lazy val http4s = (project in file("http4s")).settings(
   grpcTestGenSettings,
   name := "grpc-json-bridge-http4s",
   libraryDependencies ++= Seq(
-    "org.http4s" %% "http4s-dsl" % "0.18.22",
-    "org.http4s" %% "http4s-blaze-server" % "0.18.22"
+    "org.http4s" %% "http4s-dsl" % "0.18.23",
+    "org.http4s" %% "http4s-blaze-server" % "0.18.23"
   ),
   scalacOptions += "-Ypartial-unification"
 ).dependsOn(core)
