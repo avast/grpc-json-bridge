@@ -49,22 +49,20 @@ class Http4sTest extends FunSuite with ScalaFutures {
         Request[Task](
           method = Method.POST,
           uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail())
-        ).withBody(""" { "names": ["abc","def"] } """)
-          .runAsync
-          .futureValue
-          .withContentType(`Content-Type`(MediaType.`application/json`, Charset.`UTF-8`))
+        ).withEntity(""" { "names": ["abc","def"] } """)
+          .withContentType(`Content-Type`(MediaType.application.json, Charset.`UTF-8`))
       )
       .value
-      .runAsync
+      .runToFuture
       .futureValue
 
     assertResult(org.http4s.Status.Ok)(response.status)
 
-    assertResult("""{"results":{"name":42}}""")(response.as[String].runAsync.futureValue)
+    assertResult("""{"results":{"name":42}}""")(response.as[String].runToFuture.futureValue)
 
     assertResult(
-      Headers(
-        `Content-Type`(MediaType.`application/json`),
+      Headers.of(
+        `Content-Type`(MediaType.application.json),
         `Content-Length`.fromLong(23).getOrElse(fail())
       ))(response.headers)
 
@@ -87,22 +85,20 @@ class Http4sTest extends FunSuite with ScalaFutures {
       .apply(
         Request[Task](method = Method.POST,
                       uri = Uri.fromString(s"/abc/def/${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail()))
-          .withBody(""" { "names": ["abc","def"] } """)
-          .runAsync
-          .futureValue
-          .withContentType(`Content-Type`(MediaType.`application/json`))
+          .withEntity(""" { "names": ["abc","def"] } """)
+          .withContentType(`Content-Type`(MediaType.application.json))
       )
       .value
-      .runAsync
+      .runToFuture
       .futureValue
 
     assertResult(org.http4s.Status.Ok)(response.status)
 
-    assertResult("""{"results":{"name":42}}""")(response.as[String].runAsync.futureValue)
+    assertResult("""{"results":{"name":42}}""")(response.as[String].runToFuture.futureValue)
 
     assertResult(
-      Headers(
-        `Content-Type`(MediaType.`application/json`),
+      Headers.of(
+        `Content-Type`(MediaType.application.json),
         `Content-Length`.fromLong(23).getOrElse(fail())
       ))(response.headers)
 
@@ -124,13 +120,11 @@ class Http4sTest extends FunSuite with ScalaFutures {
         .apply(
           Request[Task](method = Method.POST,
                         uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail()))
-            .withBody("")
-            .runAsync
-            .futureValue
-            .withContentType(`Content-Type`(MediaType.`application/json`))
+            .withEntity("")
+            .withContentType(`Content-Type`(MediaType.application.json))
         )
         .value
-        .runAsync
+        .runToFuture
         .futureValue
 
       assertResult(org.http4s.Status.BadRequest)(response.status)
@@ -141,12 +135,10 @@ class Http4sTest extends FunSuite with ScalaFutures {
         .apply(
           Request[Task](method = Method.POST,
                         uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail()))
-            .withBody(""" { "names": ["abc","def"] } """)
-            .runAsync
-            .futureValue
+            .withEntity(""" { "names": ["abc","def"] } """)
         )
         .value
-        .runAsync
+        .runToFuture
         .futureValue
 
       assertResult(org.http4s.Status.BadRequest)(response.status)
@@ -166,13 +158,11 @@ class Http4sTest extends FunSuite with ScalaFutures {
       .apply(
         Request[Task](method = Method.POST,
                       uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail()))
-          .withBody(""" { "names": ["abc","def"] } """)
-          .runAsync
-          .futureValue
-          .withContentType(`Content-Type`(MediaType.`application/json`))
+          .withEntity(""" { "names": ["abc","def"] } """)
+          .withContentType(`Content-Type`(MediaType.application.json))
       )
       .value
-      .runAsync
+      .runToFuture
       .futureValue
 
     assertResult(org.http4s.Status.Forbidden)(response.status)
@@ -188,13 +178,13 @@ class Http4sTest extends FunSuite with ScalaFutures {
         Request[Task](method = Method.GET, uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}").getOrElse(fail()))
       )
       .value
-      .runAsync
+      .runToFuture
       .futureValue
 
     assertResult(org.http4s.Status.Ok)(response.status)
 
     assertResult("com.avast.grpc.jsonbridge.test.TestApiService/Get\ncom.avast.grpc.jsonbridge.test.TestApiService/Get2")(
-      response.as[String].runAsync.futureValue)
+      response.as[String].runToFuture.futureValue)
   }
 
   test("provides services info") {
@@ -207,13 +197,13 @@ class Http4sTest extends FunSuite with ScalaFutures {
         Request[Task](method = Method.GET, uri = Uri.fromString("/").getOrElse(fail()))
       )
       .value
-      .runAsync
+      .runToFuture
       .futureValue
 
     assertResult(org.http4s.Status.Ok)(response.status)
 
     assertResult("com.avast.grpc.jsonbridge.test.TestApiService/Get\ncom.avast.grpc.jsonbridge.test.TestApiService/Get2")(
-      response.as[String].runAsync.futureValue)
+      response.as[String].runToFuture.futureValue)
   }
 
   test("passes user headers") {
@@ -250,14 +240,12 @@ class Http4sTest extends FunSuite with ScalaFutures {
           Request[Task](
             method = Method.POST,
             uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail()),
-            headers = Headers(Header("The-Header", headerValue))
-          ).withBody(""" { "names": ["abc","def"] } """)
-            .runAsync
-            .futureValue
-            .withContentType(`Content-Type`(MediaType.`application/json`))
+            headers = Headers.of(Header("The-Header", headerValue))
+          ).withEntity(""" { "names": ["abc","def"] } """)
+            .withContentType(`Content-Type`(MediaType.application.json))
         )
         .value
-        .runAsync
+        .runToFuture
         .futureValue
 
       assertResult(org.http4s.Status.Ok)(response.status)
@@ -268,13 +256,11 @@ class Http4sTest extends FunSuite with ScalaFutures {
         .apply(
           Request[Task](method = Method.POST,
                         uri = Uri.fromString(s"${classOf[TestApiService].getName.replace("$", ".")}/Get").getOrElse(fail()))
-            .withBody(""" { "names": ["abc","def"] } """)
-            .runAsync
-            .futureValue
-            .withContentType(`Content-Type`(MediaType.`application/json`))
+            .withEntity(""" { "names": ["abc","def"] } """)
+            .withContentType(`Content-Type`(MediaType.application.json))
         )
         .value
-        .runAsync
+        .runToFuture
         .futureValue
 
       assertResult(org.http4s.Status.InternalServerError)(response.status) // because of failed assertResult

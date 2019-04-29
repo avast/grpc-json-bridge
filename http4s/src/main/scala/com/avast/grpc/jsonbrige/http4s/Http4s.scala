@@ -11,13 +11,13 @@ import io.grpc.{BindableService, Status => GrpcStatus}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.{`Content-Type`, `WWW-Authenticate`}
 import org.http4s.server.middleware.{CORS, CORSConfig}
-import org.http4s.{Challenge, Header, Headers, HttpService, MediaType, Response}
+import org.http4s.{Challenge, Header, Headers, HttpRoutes, MediaType, Response}
 
 import scala.language.higherKinds
 
 object Http4s extends StrictLogging {
 
-  def apply[F[_]: Sync](configuration: Configuration)(bridges: GrpcJsonBridge[F, _ <: BindableService]*): HttpService[F] = {
+  def apply[F[_]: Sync](configuration: Configuration)(bridges: GrpcJsonBridge[F, _ <: BindableService]*): HttpRoutes[F] = {
     implicit val h: Http4sDsl[F] = Http4sDsl[F]
     import h._
 
@@ -29,7 +29,7 @@ object Http4s extends StrictLogging {
 
     logger.info(s"Creating HTTP4S service proxying gRPC services: ${bridges.map(_.serviceName).mkString("[", ", ", "]")}")
 
-    val http4sService = HttpService[F] {
+    val http4sService = HttpRoutes.of[F] {
       case _ @GET -> `pathPrefix` / serviceName if serviceName.nonEmpty =>
         bridgesMap.get(serviceName) match {
           case Some(service) =>
@@ -48,24 +48,24 @@ object Http4s extends StrictLogging {
         headers.get(`Content-Type`.name) match {
           case Some(Header(_, contentTypeValue)) =>
             `Content-Type`.parse(contentTypeValue) match {
-              case Right(`Content-Type`(MediaType.`application/json`, _)) =>
+              case Right(`Content-Type`(MediaType.application.json, _)) =>
                 bridgesMap.get(serviceName) match {
                   case Some(service) =>
                     request
                       .as[String]
                       .flatMap(service.invokeGrpcMethod(methodName, _, mapHeaders(headers)))
                       .flatMap {
-                        case Right(resp) => Ok(resp, `Content-Type`(MediaType.`application/json`))
+                        case Right(resp) => Ok(resp, `Content-Type`(MediaType.application.json))
                         case Left(st) => mapStatus(st, configuration)
                       }
 
                   case None => NotFound(s"Service '$serviceName' not found")
                 }
 
-              case _ => BadRequest(s"Content-Type must be '${MediaType.`application/json`}', it's '$contentTypeValue'")
+              case _ => BadRequest(s"Content-Type must be '${MediaType.application.json}', it's '$contentTypeValue'")
             }
 
-          case _ => BadRequest(s"Content-Type must be '${MediaType.`application/json`}'")
+          case _ => BadRequest(s"Content-Type must be '${MediaType.application.json}'")
         }
     }
 
@@ -76,7 +76,7 @@ object Http4s extends StrictLogging {
   }
 
   private def mapHeaders(headers: Headers): Seq[GrpcHeader] = {
-    headers.map { h =>
+    headers.iterator.map { h =>
       GrpcHeader(h.name.value, h.value)
     }.toSeq
   }

@@ -53,7 +53,7 @@ object AkkaHttp {
                     val methodCall =
                       Task.fromEffect {
                         service.invokeGrpcMethod(methodName, json, mapHeaders(req.headers))
-                      }.runAsync
+                      }.runToFuture
 
                     onComplete(methodCall) {
                       case Success(Right(r)) =>
