@@ -41,20 +41,35 @@ abstract class GrpcJsonBridgeBase[F[_], Stub <: io.grpc.stub.AbstractStub[Stub]]
         .to[F]
         .map(Right(_): Either[Status, A])
         .recover {
-          case e: StatusException if e.getStatus.getCode == Status.Code.UNKNOWN => Left(Status.INTERNAL)
-          case e: StatusRuntimeException if e.getStatus.getCode == Status.Code.UNKNOWN => Left(Status.INTERNAL)
-          case e: StatusException => Left(e.getStatus)
-          case e: StatusRuntimeException => Left(e.getStatus)
-          case NonFatal(e) =>
-            logger.debug("Error while executing the request", e)
-            Left(Status.INTERNAL.withCause(e))
+          case ex: Throwable =>
+            logger.warn("Error while executing the request (recover)", ex)
+            ex match {
+              case e: StatusException if e.getStatus.getCode == Status.Code.UNKNOWN =>
+                Left(Status.INTERNAL.withCause(e.getStatus.getCause))
+              case e: StatusRuntimeException if e.getStatus.getCode == Status.Code.UNKNOWN =>
+                Left(Status.INTERNAL.withCause(e.getStatus.getCause))
+              case e: StatusException =>
+                Left(e.getStatus.withCause(e.getStatus.getCause))
+              case e: StatusRuntimeException =>
+                Left(e.getStatus)
+                Left(e.getStatus.withCause(e.getStatus.getCause))
+              case NonFatal(e) =>
+                Left(Status.INTERNAL.withCause(e))
+              case _ => throw ex
+            }
         }
     } catch {
-      case e: StatusException if e.getStatus.getCode == Status.Code.UNKNOWN => F.pure(Left(Status.INTERNAL))
-      case e: StatusRuntimeException if e.getStatus.getCode == Status.Code.UNKNOWN => F.pure(Left(Status.INTERNAL))
-      case NonFatal(e) =>
-        logger.debug("Error while executing the request", e)
-        F.pure(Left(Status.INTERNAL.withCause(e)))
+      case ex: Throwable =>
+        logger.warn("Error while executing the request (catch)", ex)
+        ex match {
+          case e: StatusException if e.getStatus.getCode == Status.Code.UNKNOWN =>
+            F.pure(Left(Status.INTERNAL.withCause(e.getStatus.getCause)))
+          case e: StatusRuntimeException if e.getStatus.getCode == Status.Code.UNKNOWN =>
+            F.pure(Left(Status.INTERNAL.withCause(e.getStatus.getCause)))
+          case NonFatal(e) =>
+            F.pure(Left(Status.INTERNAL.withCause(e)))
+          case _ => throw ex
+        }
     }
 
     // just abandon the stub...
@@ -68,10 +83,15 @@ abstract class GrpcJsonBridgeBase[F[_], Stub <: io.grpc.stub.AbstractStub[Stub]]
         builder.build().asInstanceOf[Gpb]
       }
     } catch {
-      case e: StatusRuntimeException => Left(e.getStatus)
-      case NonFatal(e) =>
-        logger.debug("Error while converting JSON to GPB", e)
-        Left(Status.INVALID_ARGUMENT.withCause(e))
+      case ex: Throwable =>
+        logger.error("Error while converting JSON to GPB", ex)
+        ex match {
+          case e: StatusRuntimeException =>
+            Left(e.getStatus.withCause(e.getCause))
+          case NonFatal(e) =>
+            Left(Status.INVALID_ARGUMENT.withCause(e))
+          case _ => throw ex
+        }
     }
   }
 
