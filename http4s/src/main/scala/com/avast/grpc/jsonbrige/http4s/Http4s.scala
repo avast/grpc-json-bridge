@@ -67,9 +67,13 @@ object Http4s extends StrictLogging {
                     logger.warn(message)
                     NotFound(message)
                 }
+              case Right(c) =>
+                val message = s"Content-Type must be '${MediaType.application.json}', it is '$c'"
+                logger.warn(message)
+                BadRequest(message)
 
               case Left(e) =>
-                val message = s"Content-Type must be '${MediaType.application.json}', it's '$contentTypeValue'"
+                val message = s"Content-Type must be '${MediaType.application.json}', cannot parse '$contentTypeValue'"
                 logger.warn(message, e)
                 BadRequest(message)
             }
