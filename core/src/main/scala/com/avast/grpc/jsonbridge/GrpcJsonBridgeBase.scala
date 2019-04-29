@@ -41,7 +41,7 @@ abstract class GrpcJsonBridgeBase[F[_], Stub <: io.grpc.stub.AbstractStub[Stub]]
         .to[F]
         .map(Right(_): Either[Status, A])
         .recover {
-          case ex: Throwable =>
+          case NonFatal(ex) =>
             logger.warn("Error while executing the request (recover)", ex)
             ex match {
               case e: StatusException if e.getStatus.getCode == Status.Code.UNKNOWN =>
@@ -51,24 +51,21 @@ abstract class GrpcJsonBridgeBase[F[_], Stub <: io.grpc.stub.AbstractStub[Stub]]
               case e: StatusException =>
                 Left(e.getStatus.withCause(e.getStatus.getCause))
               case e: StatusRuntimeException =>
-                Left(e.getStatus)
                 Left(e.getStatus.withCause(e.getStatus.getCause))
-              case NonFatal(e) =>
-                Left(Status.INTERNAL.withCause(e))
-              case _ => throw ex
+              case _ =>
+                Left(Status.INTERNAL.withCause(ex))
             }
         }
     } catch {
-      case ex: Throwable =>
+      case NonFatal(ex) =>
         logger.warn("Error while executing the request (catch)", ex)
         ex match {
           case e: StatusException if e.getStatus.getCode == Status.Code.UNKNOWN =>
             F.pure(Left(Status.INTERNAL.withCause(e.getStatus.getCause)))
           case e: StatusRuntimeException if e.getStatus.getCode == Status.Code.UNKNOWN =>
             F.pure(Left(Status.INTERNAL.withCause(e.getStatus.getCause)))
-          case NonFatal(e) =>
-            F.pure(Left(Status.INTERNAL.withCause(e)))
-          case _ => throw ex
+          case _ =>
+            F.pure(Left(Status.INTERNAL.withCause(ex)))
         }
     }
 
@@ -83,14 +80,13 @@ abstract class GrpcJsonBridgeBase[F[_], Stub <: io.grpc.stub.AbstractStub[Stub]]
         builder.build().asInstanceOf[Gpb]
       }
     } catch {
-      case ex: Throwable =>
+      case NonFatal(ex) =>
         logger.error("Error while converting JSON to GPB", ex)
         ex match {
           case e: StatusRuntimeException =>
             Left(e.getStatus.withCause(e.getCause))
-          case NonFatal(e) =>
-            Left(Status.INVALID_ARGUMENT.withCause(e))
-          case _ => throw ex
+          case _ =>
+            Left(Status.INVALID_ARGUMENT.withCause(ex))
         }
     }
   }
