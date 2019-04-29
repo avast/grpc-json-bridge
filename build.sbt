@@ -3,7 +3,7 @@ import sbt.Keys.libraryDependencies
 
 val logger: Logger = ConsoleLogger()
 
-crossScalaVersions := Seq("2.12.7")
+crossScalaVersions := Seq("2.12.8")
 
 lazy val Versions = new {
   val gpb3Version = "3.7.1"
@@ -13,7 +13,7 @@ lazy val Versions = new {
 }
 
 lazy val scalaSettings = Seq(
-  scalaVersion := "2.12.7",
+  scalaVersion := "2.12.8",
   scalacOptions += "-deprecation",
   scalacOptions += "-unchecked",
   scalacOptions += "-feature"
@@ -112,14 +112,14 @@ lazy val core = (project in file("core")).settings(
     "com.google.protobuf" % "protobuf-java-util" % Versions.gpb3Version,
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
-    "org.typelevel" %% "cats-core" % "1.5.0",
-    "io.monix" %% "monix" % "3.0.0-RC1",
+    "org.typelevel" %% "cats-core" % "1.6.0",
+    "io.monix" %% "monix" % "3.0.0-RC2",
     "com.kailuowang" %% "mainecoon-core" % "0.6.4",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
     "org.slf4j" % "jul-to-slf4j" % "1.7.26",
     "org.slf4j" % "jcl-over-slf4j" % "1.7.26",
     "io.grpc" % "grpc-services" % Versions.grpcVersion % "test",
-    "com.avast.cactus" %% "cactus-grpc-server" % "0.15.1" % "test"
+    "com.avast.cactus" %% "cactus-grpc-server" % "0.16.0" % "test"
   )
 )
 
@@ -130,8 +130,8 @@ lazy val http4s = (project in file("http4s")).settings(
   grpcTestGenSettings,
   name := "grpc-json-bridge-http4s",
   libraryDependencies ++= Seq(
-    "org.http4s" %% "http4s-dsl" % "0.18.23",
-    "org.http4s" %% "http4s-blaze-server" % "0.18.23"
+    "org.http4s" %% "http4s-dsl" % "0.20.0",
+    "org.http4s" %% "http4s-blaze-server" % "0.20.0"
   ),
   scalacOptions += "-Ypartial-unification"
 ).dependsOn(core)

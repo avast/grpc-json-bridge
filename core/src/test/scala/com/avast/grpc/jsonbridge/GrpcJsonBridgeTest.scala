@@ -54,7 +54,7 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
         "Get",
         """ { "names": ["abc","def"] } """
       )
-      .runAsync
+      .runToFuture
       .futureValue
 
     assertResult("""{"results":{"name":42}}""")(response)
@@ -65,7 +65,7 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
           "get", // wrong casing
           """ { "names": ["abc","def"] } """
         )
-        .runAsync
+        .runToFuture
         .futureValue
     }
 
@@ -81,7 +81,7 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
 
     val Left(status) = bridge
       .invokeGrpcMethod("Get", "")
-      .runAsync
+      .runToFuture
       .futureValue
 
     assertResult(Status.INVALID_ARGUMENT.getCode)(status.getCode)
@@ -96,7 +96,7 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
 
     val Left(status) = bridge
       .invokeGrpcMethod("Get", """ { "names": ["abc","def"] } """)
-      .runAsync
+      .runToFuture
       .futureValue
 
     assertResult(Status.INTERNAL.getCode)(status.getCode)
@@ -129,7 +129,7 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
         "Get",
         """ { "names": ["abc","def"] } """
       )
-      .runAsync
+      .runToFuture
       .futureValue
 
     assertResult("""{"results":{"name":42}}""")(response)
@@ -142,7 +142,7 @@ class GrpcJsonBridgeTest extends FunSuite with ScalaFutures {
         |  override def get(request: GetRequest, responseObserver: StreamObserver[GetResponse]): Unit = {}
         |}.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
         |
-        |implicit val taskToFuture: Task ~> Future = new ~>[Task, Future] { override def apply[A](fa: Task[A]): Future[A] = fa.runAsync }
+        |implicit val taskToFuture: Task ~> Future = new ~>[Task, Future] { override def apply[A](fa: Task[A]): Future[A] = fa.runToFuture }
         |
         |val bridgeFuture: GrpcJsonBridge[Future, MyServiceImpl] = bridge.mapK[Future]
       """.stripMargin)

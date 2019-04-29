@@ -34,10 +34,11 @@ abstract class GrpcJsonBridgeBase[F[_], Stub <: io.grpc.stub.AbstractStub[Stub]]
     val clientFutureStub = newFutureStub
       .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(metadata))
 
+    implicit val sch: Scheduler = Scheduler(ec)
     try {
       Task
         .deferFuture(f(clientFutureStub))
-        .to[F](F, Scheduler(ec))
+        .to[F]
         .map(Right(_): Either[Status, A])
         .recover {
           case e: StatusException if e.getStatus.getCode == Status.Code.UNKNOWN => Left(Status.INTERNAL)
