@@ -42,7 +42,7 @@ abstract class GrpcJsonBridgeBase[F[_], Stub <: io.grpc.stub.AbstractStub[Stub]]
         .map(Right(_): Either[Status, A])
         .recover {
           case NonFatal(ex) =>
-            logger.warn("Error while executing the request (recover)", ex)
+            logger.info("Error while executing the request (recover)", ex)
             ex match {
               case e: StatusException if e.getStatus.getCode == Status.Code.UNKNOWN =>
                 Left(Status.INTERNAL.withCause(e.getStatus.getCause))
@@ -58,7 +58,7 @@ abstract class GrpcJsonBridgeBase[F[_], Stub <: io.grpc.stub.AbstractStub[Stub]]
         }
     } catch {
       case NonFatal(ex) =>
-        logger.warn("Error while executing the request (catch)", ex)
+        logger.info("Error while executing the request (catch)", ex)
         ex match {
           case e: StatusException if e.getStatus.getCode == Status.Code.UNKNOWN =>
             F.pure(Left(Status.INTERNAL.withCause(e.getStatus.getCause)))
@@ -81,7 +81,7 @@ abstract class GrpcJsonBridgeBase[F[_], Stub <: io.grpc.stub.AbstractStub[Stub]]
       }
     } catch {
       case NonFatal(ex) =>
-        logger.error("Error while converting JSON to GPB", ex)
+        logger.warn("Error while converting JSON to GPB", ex)
         ex match {
           case e: StatusRuntimeException =>
             Left(e.getStatus.withCause(e.getCause))

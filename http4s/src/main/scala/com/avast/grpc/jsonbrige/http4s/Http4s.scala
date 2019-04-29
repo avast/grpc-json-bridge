@@ -39,7 +39,7 @@ object Http4s extends StrictLogging {
 
           case None =>
             val message = s"Attempt to GET non-existing service: $serviceName"
-            logger.warn(message)
+            logger.info(message)
             NotFound(message)
         }
 
@@ -64,23 +64,23 @@ object Http4s extends StrictLogging {
 
                   case None =>
                     val message = s"Attempt to POST non-existing service: $serviceName"
-                    logger.warn(message)
+                    logger.info(message)
                     NotFound(message)
                 }
               case Right(c) =>
                 val message = s"Content-Type must be '${MediaType.application.json}', it is '$c'"
-                logger.warn(message)
+                logger.info(message)
                 BadRequest(message)
 
               case Left(e) =>
                 val message = s"Content-Type must be '${MediaType.application.json}', cannot parse '$contentTypeValue'"
-                logger.warn(message, e)
+                logger.info(message, e)
                 BadRequest(message)
             }
 
           case None =>
             val message = s"Content-Type must be '${MediaType.application.json}'"
-            logger.warn(message)
+            logger.info(message)
             BadRequest(message)
         }
     }
