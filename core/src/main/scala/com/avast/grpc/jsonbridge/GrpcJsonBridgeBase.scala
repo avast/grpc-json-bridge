@@ -84,7 +84,7 @@ abstract class GrpcJsonBridgeBase[F[_], Stub <: io.grpc.stub.AbstractStub[Stub]]
         logger.warn("Error while converting JSON to GPB", ex)
         ex match {
           case e: StatusRuntimeException =>
-            Left(e.getStatus.withCause(e.getCause))
+            Left(e.getStatus)
           case _ =>
             Left(Status.INVALID_ARGUMENT.withCause(ex))
         }
