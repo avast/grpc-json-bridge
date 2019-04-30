@@ -49,9 +49,9 @@ abstract class GrpcJsonBridgeBase[F[_], Stub <: io.grpc.stub.AbstractStub[Stub]]
               case e: StatusRuntimeException if e.getStatus.getCode == Status.Code.UNKNOWN =>
                 Left(Status.INTERNAL.withCause(e.getStatus.getCause))
               case e: StatusException =>
-                Left(e.getStatus.withCause(e.getStatus.getCause))
+                Left(e.getStatus)
               case e: StatusRuntimeException =>
-                Left(e.getStatus.withCause(e.getStatus.getCause))
+                Left(e.getStatus)
               case _ =>
                 Left(Status.INTERNAL.withCause(ex))
             }
