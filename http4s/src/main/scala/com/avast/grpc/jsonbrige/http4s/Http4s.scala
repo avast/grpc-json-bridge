@@ -85,21 +85,21 @@ object Http4s extends StrictLogging {
     import h._
 
     s.getCode match {
-      case Code.NOT_FOUND => NotFound()
-      case Code.INTERNAL => InternalServerError()
-      case Code.INVALID_ARGUMENT => BadRequest()
-      case Code.FAILED_PRECONDITION => BadRequest()
-      case Code.CANCELLED => RequestTimeout()
-      case Code.UNAVAILABLE => ServiceUnavailable()
-      case Code.DEADLINE_EXCEEDED => RequestTimeout()
+      case Code.NOT_FOUND => NotFound(s.getDescription)
+      case Code.INTERNAL => InternalServerError(s.getDescription)
+      case Code.INVALID_ARGUMENT => BadRequest(s.getDescription)
+      case Code.FAILED_PRECONDITION => BadRequest(s.getDescription)
+      case Code.CANCELLED => RequestTimeout(s.getDescription)
+      case Code.UNAVAILABLE => ServiceUnavailable(s.getDescription)
+      case Code.DEADLINE_EXCEEDED => RequestTimeout(s.getDescription)
       case Code.UNAUTHENTICATED => Unauthorized(configuration.wwwAuthenticate)
-      case Code.PERMISSION_DENIED => Forbidden()
-      case Code.UNIMPLEMENTED => NotImplemented()
-      case Code.RESOURCE_EXHAUSTED => TooManyRequests()
-      case Code.ABORTED => InternalServerError()
-      case Code.DATA_LOSS => InternalServerError()
+      case Code.PERMISSION_DENIED => Forbidden(s.getDescription)
+      case Code.UNIMPLEMENTED => NotImplemented(s.getDescription)
+      case Code.RESOURCE_EXHAUSTED => TooManyRequests(s.getDescription)
+      case Code.ABORTED => InternalServerError(s.getDescription)
+      case Code.DATA_LOSS => InternalServerError(s.getDescription)
 
-      case _ => InternalServerError()
+      case _ => InternalServerError(s.getDescription)
     }
   }
 }
