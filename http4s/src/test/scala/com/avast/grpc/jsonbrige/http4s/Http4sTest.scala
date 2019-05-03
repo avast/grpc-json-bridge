@@ -128,6 +128,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
         .futureValue
 
       assertResult(org.http4s.Status.BadRequest)(response.status)
+      assertResult("Bad Request")(response.status.reason)
     }
 
     {
@@ -166,6 +167,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
       .futureValue
 
     assertResult(org.http4s.Status.Forbidden)(response.status)
+    assertResult("Forbidden")(response.status.reason)
   }
 
   test("provides service info") {
@@ -264,6 +266,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
         .futureValue
 
       assertResult(org.http4s.Status.InternalServerError)(response.status) // because of failed assertResult
+      assertResult("Internal Server Error")(response.status.reason)
     }
   }
 }
