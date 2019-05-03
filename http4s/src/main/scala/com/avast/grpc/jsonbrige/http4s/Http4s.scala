@@ -97,22 +97,25 @@ object Http4s extends StrictLogging {
   private def mapStatus[F[_]: Sync](s: GrpcStatus, configuration: Configuration)(implicit h: Http4sDsl[F]): F[Response[F]] = {
     import h._
 
-    s.getCode match {
-      case Code.NOT_FOUND => NotFound(s.getDescription)
-      case Code.INTERNAL => InternalServerError(s.getDescription)
-      case Code.INVALID_ARGUMENT => BadRequest(s.getDescription)
-      case Code.FAILED_PRECONDITION => BadRequest(s.getDescription)
-      case Code.CANCELLED => RequestTimeout(s.getDescription)
-      case Code.UNAVAILABLE => ServiceUnavailable(s.getDescription)
-      case Code.DEADLINE_EXCEEDED => RequestTimeout(s.getDescription)
-      case Code.UNAUTHENTICATED => Unauthorized(configuration.wwwAuthenticate)
-      case Code.PERMISSION_DENIED => Forbidden(s.getDescription)
-      case Code.UNIMPLEMENTED => NotImplemented(s.getDescription)
-      case Code.RESOURCE_EXHAUSTED => TooManyRequests(s.getDescription)
-      case Code.ABORTED => InternalServerError(s.getDescription)
-      case Code.DATA_LOSS => InternalServerError(s.getDescription)
+    val description = List(Option(s.getDescription), Option(s.getCause).flatMap(x => Option(x.getMessage))).flatten.mkString(", ")
 
-      case _ => InternalServerError(s.getDescription)
+    s.getCode match {
+      case Code.NOT_FOUND => NotFound(description)
+      case Code.INTERNAL => InternalServerError(description)
+      case Code.INVALID_ARGUMENT => BadRequest(description)
+      case Code.FAILED_PRECONDITION => BadRequest(description)
+      case Code.CANCELLED => RequestTimeout(description)
+      case Code.UNAVAILABLE => ServiceUnavailable(description)
+      case Code.DEADLINE_EXCEEDED => RequestTimeout(description)
+      case Code.PERMISSION_DENIED => Forbidden(description)
+      case Code.UNIMPLEMENTED => NotImplemented(description)
+      case Code.RESOURCE_EXHAUSTED => TooManyRequests(description)
+      case Code.ABORTED => InternalServerError(description)
+      case Code.DATA_LOSS => InternalServerError(description)
+
+      case Code.UNAUTHENTICATED => Unauthorized(configuration.wwwAuthenticate)
+
+      case _ => InternalServerError(description)
     }
   }
 }
