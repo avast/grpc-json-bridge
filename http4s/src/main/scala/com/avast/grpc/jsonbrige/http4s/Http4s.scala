@@ -97,7 +97,11 @@ object Http4s extends StrictLogging {
   private def mapStatus[F[_]: Sync](s: GrpcStatus, configuration: Configuration)(implicit h: Http4sDsl[F]): F[Response[F]] = {
     import h._
 
-    val description = List(Option(s.getDescription), Option(s.getCause).flatMap(x => Option(x.getMessage))).flatten.mkString(", ")
+    val description = List(
+      Option(s.getDescription),
+      Option(s.getCause).flatMap(e => Option(e.getClass.getCanonicalName)),
+      Option(s.getCause).flatMap(e => Option(e.getMessage))
+    ).flatten.mkString(", ")
 
     s.getCode match {
       case Code.NOT_FOUND => NotFound(description)
