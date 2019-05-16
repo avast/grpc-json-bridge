@@ -7,6 +7,7 @@ import akka.http.scaladsl.server.{PathMatcher, Route}
 import cats.data.NonEmptyList
 import cats.effect.Effect
 import com.avast.grpc.jsonbridge.GrpcJsonBridge
+import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import io.grpc.Status.Code
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -41,7 +42,7 @@ object AkkaHttp {
             case Some(`JsonContentType`) =>
               entity(as[String]) { json =>
                 val methodCall = Task.fromEffect {
-                  bridge.invoke(serviceName + "/" + methodName, json, req.headers.map(h => (h.name(), h.value())).toMap)
+                  bridge.invoke(GrpcMethodName(serviceName, methodName), json, req.headers.map(h => (h.name(), h.value())).toMap)
                 }.runToFuture
 
                 onComplete(methodCall) {

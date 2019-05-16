@@ -101,9 +101,9 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
       })
       .toMap
 
-  override def invoke(fullMethodName: String, body: String, headers: Map[String, String]): F[Either[Status, String]] =
-    handlersPerMethod.get(fullMethodName) match {
-      case None => F.pure(Left(Status.NOT_FOUND.withDescription(s"Method '$fullMethodName' not found")))
+  override def invoke(methodName: GrpcMethodName, body: String, headers: Map[String, String]): F[Either[Status, String]] =
+    handlersPerMethod.get(methodName.fullName) match {
+      case None => F.pure(Left(Status.NOT_FOUND.withDescription(s"Method '$methodName' not found")))
       case Some(handler) =>
         handler(body, headers)
           .recover {

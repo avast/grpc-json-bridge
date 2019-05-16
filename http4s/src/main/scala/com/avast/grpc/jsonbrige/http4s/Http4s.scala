@@ -4,6 +4,7 @@ import cats.data.NonEmptyList
 import cats.effect._
 import cats.syntax.all._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge
+import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import com.typesafe.scalalogging.StrictLogging
 import io.grpc.Status.Code
 import io.grpc.{Status => GrpcStatus}
@@ -48,8 +49,11 @@ object Http4s extends StrictLogging {
               case Right(`Content-Type`(MediaType.application.json, _)) =>
                 request
                   .as[String]
-                  .flatMap(body =>
-                    bridge.invoke(serviceName + "/" + methodName, body, request.headers.toList.map(h => (h.name.value, h.value)).toMap))
+                  .flatMap(
+                    body =>
+                      bridge.invoke(GrpcMethodName(serviceName, methodName),
+                                    body,
+                                    request.headers.toList.map(h => (h.name.value, h.value)).toMap))
                   .flatMap {
                     case Right(resp) => Ok(resp, `Content-Type`(MediaType.application.json))
                     case Left(st) => mapStatus(st, configuration)

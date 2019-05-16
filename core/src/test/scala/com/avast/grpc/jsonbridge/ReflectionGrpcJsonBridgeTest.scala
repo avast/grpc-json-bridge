@@ -1,12 +1,12 @@
 package com.avast.grpc.jsonbridge
 
+import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import io.grpc.Status
 import io.grpc.inprocess.InProcessServerBuilder
 import monix.eval.Task
 import org.scalatest.{fixture, Matchers, Outcome}
 
 import scala.concurrent.duration.Duration
-
 import monix.execution.Scheduler.Implicits.global
 
 class ReflectionGrpcJsonBridgeTest extends fixture.FlatSpec with Matchers {
@@ -28,19 +28,19 @@ class ReflectionGrpcJsonBridgeTest extends fixture.FlatSpec with Matchers {
   it must "successfully call the invoke method" in { f =>
     val Right(response) =
       f.bridge
-        .invoke("com.avast.grpc.jsonbridge.test.TestService/Add", "{\"a\":1, \"b\": 2}", Map.empty)
+        .invoke(GrpcMethodName("com.avast.grpc.jsonbridge.test.TestService/Add"), "{\"a\":1, \"b\": 2}", Map.empty)
         .runSyncUnsafe(Duration.Inf)
     response shouldBe "{\"sum\":3}"
   }
 
   it must "return expected status code for missing method" in { f =>
-    val Left(status) = f.bridge.invoke("ble", "{}", Map.empty).runSyncUnsafe(Duration.Inf)
+    val Left(status) = f.bridge.invoke(GrpcMethodName("ble/bla"), "{}", Map.empty).runSyncUnsafe(Duration.Inf)
     status.getCode shouldBe Status.NOT_FOUND.getCode
   }
 
   it must "return expected status code for malformed JSON" in { f =>
     val Left(status) =
-      f.bridge.invoke("com.avast.grpc.jsonbridge.test.TestService/Add", "{ble}", Map.empty).runSyncUnsafe(Duration.Inf)
+      f.bridge.invoke(GrpcMethodName("com.avast.grpc.jsonbridge.test.TestService/Add"), "{ble}", Map.empty).runSyncUnsafe(Duration.Inf)
     status.getCode shouldBe Status.INVALID_ARGUMENT.getCode
   }
 

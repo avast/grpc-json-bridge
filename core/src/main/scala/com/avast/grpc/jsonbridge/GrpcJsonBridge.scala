@@ -6,7 +6,7 @@ import io.grpc.Status
 import scala.language.higherKinds
 
 trait GrpcJsonBridge[F[_]] {
-  def invoke(fullMethodName: String, body: String, headers: Map[String, String]): F[Either[Status, String]]
+  def invoke(methodName: GrpcMethodName, body: String, headers: Map[String, String]): F[Either[Status, String]]
   def methodsNames: Seq[GrpcMethodName]
   def servicesNames: Seq[String]
 }
