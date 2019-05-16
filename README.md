@@ -3,131 +3,86 @@
 [![Build Status](https://travis-ci.org/avast/grpc-json-bridge.svg?branch=master)](https://travis-ci.org/avast/grpc-json-bridge)
 [![Download](https://api.bintray.com/packages/avast/maven/grpc-json-bridge/images/download.svg) ](https://bintray.com/avast/maven/grpc-json-bridge/_latestVersion)
 
-This library makes possible to receive a JSON encoded request to a gRPC service. It provides an implementation-agnostic module for mapping to
-your favorite HTTP server as well as few implementations for direct usage in some well-known HTTP servers.  
-For requests/responses mapping a [standard GPB <-> JSON mapping](https://developers.google.com/protocol-buffers/docs/proto3#json) is used.
+This library allows to make a JSON encoded request to a gRPC service. It provides an implementation-agnostic module for mapping to your favorite HTTP server (`core`) as well as few implementations for direct usage in some well-known HTTP servers.  
 
-It uses Scala macros for creating mapping between runtime-provided service and method names to pregenerated Java gRPC classes. In case you
-don't want to use _plain Java API_ you can easily use it together with [Cactus](https://github.com/avast/cactus).
+[Standard GPB <-> JSON mapping](https://developers.google.com/protocol-buffers/docs/proto3#json) is used.
 
-The API is _finally tagless_ (read more e.g. [here](https://www.beyondthelines.net/programming/introduction-to-tagless-final/))
-meaning it can use whatever [`F[_]: cats.effect.Effect`](https://typelevel.org/cats-effect/typeclasses/effect.html)
-(e.g. `cats.effect.IO`, `monix.eval.Task`).
+The API is _finally tagless_ (read more e.g. [here](https://www.beyondthelines.net/programming/introduction-to-tagless-final/)) meaning it can use whatever [`F[_]: cats.effect.Effect`](https://typelevel.org/cats-effect/typeclasses/effect.html) (e.g. `cats.effect.IO`, `monix.eval.Task`).
 
-There are several modules:
-1. core - for basic implementation-agnostic usage
-1. [http4s](http4s) - integration with [http4s](https://http4s.org/) webserver
-1. [akka-http](akka-http) - integration with [Akka Http](https://doc.akka.io/docs/akka-http/current/server-side/index.html) webserver
-
-The created [`GrpcJsonBridge`](core/src/main/scala/com/avast/grpc/jsonbridge/GrpcJsonBridge.scala) exposes not only the methods itself but
-also provides their list to make possible to implement an _info_ endpoint (which is already implemented in server-agnostic implementations).
-
-Recommended URL pattern for exposing the service (and the one used in provided implementations) is `/$SERVICENAME/$METHOD` name and the http
-method is obviously `POST`. The _info_ endpoint is supposed to be exposed on the `/$SERVICENAME` URL and available with `GET` request.
-
-The bridge passes all received headers from JSON request to the gRPC service so it's not any problem to use it e.g. authentication.
-
-## Core module
-
-### Dependency
-
-#### Gradle
+## Usage
 ```groovy
 compile 'com.avast.grpc:grpc-json-bridge-core_2.12:x.x.x'
 ```
-
-#### SBT
 ```scala
 libraryDependencies += "com.avast.grpc" %% "grpc-json-bridge-core" % "x.x.x"
 ```
 
-### Usage
-
-Having a proto like
-```proto
-option java_package = "com.avast.grpc.jsonbridge.test";
-
-message TestApi {
-    message GetRequest {
-        repeated string names = 1;           // REQUIRED
-    }
-    
-    message GetResponse {
-        map<string, int32> results = 1;      // REQUIRED
-    }
-}
-
-service TestApiService {
-    rpc Get (TestApi.GetRequest) returns (TestApi.GetResponse) {}
-}
-```
-you can create [`GrpcJsonBridge`](core/src/main/scala/com/avast/grpc/jsonbridge/GrpcJsonBridge.scala) instance by
 ```scala
-import com.avast.grpc.jsonbridge._ // this does the magic!
+import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge
 
-import scala.concurrent.ExecutionContextExecutorService
-import com.avast.grpc.jsonbridge.test.TestApi
-import com.avast.grpc.jsonbridge.test.TestApi.{GetRequest, GetResponse}
-import com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.{TestApiServiceFutureStub, TestApiServiceImplBase}
-import io.grpc.stub.StreamObserver
+// for whole server
+val grpcServer: io.grpc.Server = ???
+val bridge = new ReflectionGrpcJsonBridge[Task](grpcServer)
 
-implicit val executor: ExecutionContextExecutorService = ???
+// or for selected services
+val s1: ServerServiceDefinition = ???
+val s2: ServerServiceDefinition = ???
+val anotherBridge = new ReflectionGrpcJsonBridge[Task](s1, s2)
 
-val service = new TestApiServiceImplBase {
-                override def get(request: GetRequest, responseObserver: StreamObserver[TestApi.GetResponse]): Unit = {
-                  responseObserver.onNext(GetResponse.newBuilder().putResults("name", 42).build())
-                  responseObserver.onCompleted()
-                }
-              }
-val bridge = service.createGrpcJsonBridge[Task, TestApiServiceFutureStub]() // this does the magic!
+// call a method manually, with a header specified
+val jsonResponse = bridge.invoke("com.avast.grpc.jsonbridge.test.TestService/Add", "{\"a\":1, \"b\": 2}", Map("My-Header" -> "value"))
 ```
-or you can even go with the [Cactus](https://github.com/avast/cactus) and let it map the GPB messages to your case classes:
+
+### http4s
+```groovy
+compile 'com.avast.grpc:grpc-json-bridge-http4s_2.12:x.x.x'
+```
 ```scala
-import com.avast.grpc.jsonbridge._ // import for the grpc-json-bridge mapping
-import com.avast.cactus.grpc._
-import com.avast.cactus.grpc.server._ // import for the cactus mapping
-
-import com.avast.grpc.jsonbridge.test.TestApiServiceGrpc.{TestApiServiceFutureStub, TestApiServiceImplBase}
-import io.grpc.Status
-
-import scala.concurrent.{ExecutionContextExecutorService, Future}
-
-implicit val executor: ExecutionContextExecutorService = ???
-
-case class MyRequest(names: Seq[String])
-
-case class MyResponse(results: Map[String, Int])
-
-trait MyApi extends GrpcService[Task] {
-  def get(request: MyRequest): Task[Either[Status, MyResponse]]
-}
-
-val service = new MyApi {
-  override def get(request: MyRequest): Task[Either[Status, MyResponse]] = Task {
-    Right {
-      MyResponse {
-        Map(
-          "name" -> 42
-        )
-      }
-    }
-  }
-}.mappedToService[TestApiServiceImplBase]() // cactus mapping
-
-val bridge = service.createGrpcJsonBridge[Task, TestApiServiceFutureStub]()
+libraryDependencies += "com.avast.grpc" %% "grpc-json-bridge-http4s" % "x.x.x"
 ```
+```scala
+import com.avast.grpc.jsonbridge.GrpcJsonBridge
+import com.avast.grpc.jsonbrige.http4s.{Configuration, Http4s}
+import org.http4s.HttpService
+
+val bridge: GrpcJsonBridge[Task] = ???
+val service: HttpService[Task] = Http4s(Configuration.Default)(bridge)
+```
+
+### akka-http
+```groovy
+compile 'com.avast.grpc:grpc-json-bridge-akkahttp_2.12:x.x.x'
+```
+```scala
+libraryDependencies += "com.avast.grpc" %% "grpc-json-bridge-akkahttp" % "x.x.x"
+```
+
+```scala
+import com.avast.grpc.jsonbridge.GrpcJsonBridge
+import com.avast.grpc.jsonbridge.akkahttp.{AkkaHttp, Configuration}
+import akka.http.scaladsl.server.Route
+
+val bridge: GrpcJsonBridge[Task] = ???
+val route: Route = AkkaHttp(Configuration.Default)(bridge)
+```
+
 
 ### Calling the bridged service
+List all available methods:
+```
+> curl -X GET http://localhost:9999/
 
-You can use e.g. cURL command to call the `Get` method
+com.avast.grpc.jsonbridge.test.TestService/Add
 ```
-curl -X POST -H "Content-Type: application/json" --data " { \"names\": [\"abc\",\"def\"] } " http://localhost:9999/com.avast.grpc.jsonbridge.test.TestApiServiceGrpc/Get
+List all methods from particular service:
 ```
-or get info about exposed service:
+> curl -X GET http://localhost:9999/com.avast.grpc.jsonbridge.test.TestService
+com.avast.grpc.jsonbridge.test.TestService/Add
 ```
-curl -X GET http://localhost:9999/com.avast.grpc.jsonbridge.test.TestApiServiceGrpc
+
+Call a method (please note that `POST` and `application/json` must be always specified):
 ```
-or list available services:
-```
-curl -X GET http://localhost:9999/
+> curl -X POST -H "Content-Type: application/json" --data ""{\"a\":1, \"b\": 2 }"" http://localhost:9999/com.avast.grpc.jsonbridge.test.TestService/Add
+
+{"sum":3}
 ```

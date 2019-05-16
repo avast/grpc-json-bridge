@@ -24,15 +24,6 @@ lazy val javaSettings = Seq(
   autoScalaLibrary := false
 )
 
-lazy val macroSettings = Seq(
-  addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full),
-  addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.7" cross CrossVersion.binary),
-  libraryDependencies ++= Seq(
-    "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-    "org.scala-lang" % "scala-compiler" % scalaVersion.value
-  )
-)
-
 lazy val commonSettings = Seq(
   organization := "com.avast.grpc",
   version := sys.env.getOrElse("TRAVIS_TAG", "0.1-SNAPSHOT"),
@@ -71,7 +62,7 @@ lazy val commonSettings = Seq(
 )
 
 lazy val grpcTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufConfigSettings) ++ Seq(
-  PB.protocVersion := "-v350",
+  PB.protocVersion := "-v371",
   grpcExePath := xsbti.api.SafeLazy.strict {
     val exe: File = (baseDirectory in Test).value / ".bin" / grpcExeFileName
     if (!exe.exists) {
@@ -103,7 +94,6 @@ lazy val root = (project in file("."))
 
 lazy val core = (project in file("core")).settings(
   commonSettings,
-  macroSettings,
   scalaSettings,
   grpcTestGenSettings,
   name := "grpc-json-bridge-core",
@@ -118,14 +108,12 @@ lazy val core = (project in file("core")).settings(
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
     "org.slf4j" % "jul-to-slf4j" % "1.7.26",
     "org.slf4j" % "jcl-over-slf4j" % "1.7.26",
-    "io.grpc" % "grpc-services" % Versions.grpcVersion % "test",
-    "com.avast.cactus" %% "cactus-grpc-server" % "0.16.0" % "test"
+    "io.grpc" % "grpc-services" % Versions.grpcVersion % "test"
   )
 )
 
 lazy val http4s = (project in file("http4s")).settings(
   commonSettings,
-  macroSettings,
   scalaSettings,
   grpcTestGenSettings,
   name := "grpc-json-bridge-http4s",
@@ -138,7 +126,6 @@ lazy val http4s = (project in file("http4s")).settings(
 
 lazy val akkaHttp = (project in file("akka-http")).settings(
   commonSettings,
-  macroSettings,
   scalaSettings,
   grpcTestGenSettings,
   name := "grpc-json-bridge-akkahttp",

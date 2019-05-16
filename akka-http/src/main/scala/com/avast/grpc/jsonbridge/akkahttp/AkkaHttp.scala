@@ -7,13 +7,10 @@ import akka.http.scaladsl.server.{PathMatcher, Route}
 import cats.data.NonEmptyList
 import cats.effect.Effect
 import com.avast.grpc.jsonbridge.GrpcJsonBridge
-import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcHeader
-import io.grpc.BindableService
 import io.grpc.Status.Code
 import monix.eval.Task
 import monix.execution.Scheduler
 
-import scala.concurrent.ExecutionContext
 import scala.language.higherKinds
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
@@ -24,12 +21,7 @@ object AkkaHttp {
     ContentType.WithMissingCharset(MediaType.applicationWithOpenCharset("json"))
   }
 
-  def apply[F[_]: Effect](configuration: Configuration)(bridges: GrpcJsonBridge[F, _ <: BindableService]*)(
-      implicit ec: ExecutionContext): Route = {
-    implicit val sch: Scheduler = Scheduler(ec)
-
-    val bridgesMap = bridges.map(s => (s.serviceName, s): (String, GrpcJsonBridge[F, _])).toMap
-
+  def apply[F[_]: Effect](configuration: Configuration)(bridge: GrpcJsonBridge[F])(implicit scheduler: Scheduler): Route = {
     val pathPattern = configuration.pathPrefix
       .map {
         case NonEmptyList(head, tail) =>
@@ -47,25 +39,19 @@ object AkkaHttp {
         extractRequest { req =>
           req.header[`Content-Type`] match {
             case Some(`JsonContentType`) =>
-              bridgesMap.get(serviceName) match {
-                case Some(service) =>
-                  entity(as[String]) { json =>
-                    val methodCall =
-                      Task.fromEffect {
-                        service.invokeGrpcMethod(methodName, json, mapHeaders(req.headers))
-                      }.runToFuture
+              entity(as[String]) { json =>
+                val methodCall = Task.fromEffect {
+                  bridge.invoke(serviceName + "/" + methodName, json, req.headers.map(h => (h.name(), h.value())).toMap)
+                }.runToFuture
 
-                    onComplete(methodCall) {
-                      case Success(Right(r)) =>
-                        respondWithHeader(JsonContentType) {
-                          complete(r)
-                        }
-                      case Success(Left(status)) => complete(mapStatus(status))
-                      case Failure(NonFatal(_)) => complete(StatusCodes.InternalServerError)
+                onComplete(methodCall) {
+                  case Success(Right(r)) =>
+                    respondWithHeader(JsonContentType) {
+                      complete(r)
                     }
-                  }
-
-                case None => complete(StatusCodes.NotFound, s"Service '$serviceName' not found")
+                  case Success(Left(status)) => complete(mapStatus(status))
+                  case Failure(NonFatal(_)) => complete(StatusCodes.InternalServerError)
+                }
               }
 
             case _ =>
@@ -75,23 +61,17 @@ object AkkaHttp {
       }
     } ~ get {
       path(Segment) { serviceName =>
-        bridgesMap.get(serviceName) match {
-          case Some(service) =>
-            complete(service.methodsNames.mkString("\n"))
-
-          case None => complete(StatusCodes.NotFound, s"Service '$serviceName' not found")
+        NonEmptyList.fromList(bridge.methodsNames.filter(_.service == serviceName).toList) match {
+          case None =>
+            complete(StatusCodes.NotFound, s"Service '$serviceName' not found")
+          case Some(methods) =>
+            complete(methods.map(_.fullName).toList.mkString("\n"))
         }
       }
     } ~ get {
       path(PathEnd) {
-        complete(bridgesMap.values.flatMap(s => s.methodsNames).mkString("\n"))
+        complete(bridge.methodsNames.map(_.fullName).mkString("\n"))
       }
-    }
-  }
-
-  private def mapHeaders(headers: Seq[HttpHeader]): Seq[GrpcHeader] = {
-    headers.map { h =>
-      GrpcHeader(h.name(), h.value())
     }
   }
 

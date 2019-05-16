@@ -4,46 +4,41 @@ import cats.data.NonEmptyList
 import cats.effect._
 import cats.syntax.all._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge
-import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcHeader
 import com.typesafe.scalalogging.StrictLogging
 import io.grpc.Status.Code
-import io.grpc.{BindableService, Status => GrpcStatus}
+import io.grpc.{Status => GrpcStatus}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.{`Content-Type`, `WWW-Authenticate`}
 import org.http4s.server.middleware.{CORS, CORSConfig}
-import org.http4s.{Challenge, Header, Headers, HttpRoutes, MediaType, Response}
+import org.http4s.{Challenge, Header, HttpRoutes, MediaType, Response}
 
 import scala.language.higherKinds
 
 object Http4s extends StrictLogging {
 
-  def apply[F[_]: Sync](configuration: Configuration)(bridges: GrpcJsonBridge[F, _ <: BindableService]*): HttpRoutes[F] = {
+  def apply[F[_]: Sync](configuration: Configuration)(bridge: GrpcJsonBridge[F]): HttpRoutes[F] = {
     implicit val h: Http4sDsl[F] = Http4sDsl[F]
     import h._
-
-    val bridgesMap = bridges.map(s => (s.serviceName, s): (String, GrpcJsonBridge[F, _])).toMap
 
     val pathPrefix = configuration.pathPrefix
       .map(_.foldLeft[Path](Root)(_ / _))
       .getOrElse(Root)
 
-    logger.info(s"Creating HTTP4S service proxying gRPC services: ${bridges.map(_.serviceName).mkString("[", ", ", "]")}")
+    logger.info(s"Creating HTTP4S service proxying gRPC services: ${bridge.servicesNames.mkString("[", ", ", "]")}")
 
     val http4sService = HttpRoutes.of[F] {
       case _ @GET -> `pathPrefix` / serviceName if serviceName.nonEmpty =>
-        bridgesMap.get(serviceName) match {
-          case Some(service) =>
-            Ok {
-              service.methodsNames.mkString("\n")
-            }
+        NonEmptyList.fromList(bridge.methodsNames.filter(_.service == serviceName).toList) match {
           case None =>
             val message = s"Attempt to GET non-existing service: $serviceName"
             logger.debug(message)
             NotFound(message)
+          case Some(methods) =>
+            Ok { methods.map(_.fullName).toList.mkString("\n") }
         }
 
       case _ @GET -> `pathPrefix` =>
-        Ok { bridgesMap.values.flatMap(s => s.methodsNames).mkString("\n") }
+        Ok { bridge.methodsNames.map(_.fullName).mkString("\n") }
 
       case request @ POST -> `pathPrefix` / serviceName / methodName =>
         val headers = request.headers
@@ -51,20 +46,14 @@ object Http4s extends StrictLogging {
           case Some(Header(_, contentTypeValue)) =>
             `Content-Type`.parse(contentTypeValue) match {
               case Right(`Content-Type`(MediaType.application.json, _)) =>
-                bridgesMap.get(serviceName) match {
-                  case Some(service) =>
-                    request
-                      .as[String]
-                      .flatMap(service.invokeGrpcMethod(methodName, _, mapHeaders(headers)))
-                      .flatMap {
-                        case Right(resp) => Ok(resp, `Content-Type`(MediaType.application.json))
-                        case Left(st) => mapStatus(st, configuration)
-                      }
-                  case None =>
-                    val message = s"Attempt to POST non-existing service: $serviceName"
-                    logger.debug(message)
-                    NotFound(message)
-                }
+                request
+                  .as[String]
+                  .flatMap(body =>
+                    bridge.invoke(serviceName + "/" + methodName, body, request.headers.toList.map(h => (h.name.value, h.value)).toMap))
+                  .flatMap {
+                    case Right(resp) => Ok(resp, `Content-Type`(MediaType.application.json))
+                    case Left(st) => mapStatus(st, configuration)
+                  }
               case Right(c) =>
                 val message = s"Content-Type must be '${MediaType.application.json}', it is '$c'"
                 logger.debug(message)
@@ -86,12 +75,6 @@ object Http4s extends StrictLogging {
       case Some(c) => CORS(http4sService, c)
       case None => http4sService
     }
-  }
-
-  private def mapHeaders(headers: Headers): Seq[GrpcHeader] = {
-    headers.iterator.map { h =>
-      GrpcHeader(h.name.value, h.value)
-    }.toSeq
   }
 
   private def mapStatus[F[_]: Sync](s: GrpcStatus, configuration: Configuration)(implicit h: Http4sDsl[F]): F[Response[F]] = {
