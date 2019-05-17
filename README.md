@@ -77,6 +77,7 @@ com.avast.grpc.jsonbridge.test.TestService/Add
 List all methods from particular service:
 ```
 > curl -X GET http://localhost:9999/com.avast.grpc.jsonbridge.test.TestService
+
 com.avast.grpc.jsonbridge.test.TestService/Add
 ```
 
