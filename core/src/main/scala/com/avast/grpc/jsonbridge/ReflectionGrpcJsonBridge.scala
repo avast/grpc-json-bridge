@@ -15,17 +15,19 @@ import monix.eval.Task
 import monix.execution.Scheduler
 
 import scala.collection.JavaConverters._
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.higherKinds
 import scala.util.control.NonFatal
 
-class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implicit val scheduler: Scheduler, protected val F: Async[F])
+class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implicit val ec: ExecutionContext, val F: Async[F])
     extends GrpcJsonBridge[F]
     with AutoCloseable
     with StrictLogging {
 
-  def this(grpcServer: io.grpc.Server)(implicit scheduler: Scheduler, F: Async[F]) =
-    this(grpcServer.getImmutableServices.asScala: _*)(scheduler, F)
+  def this(grpcServer: io.grpc.Server)(implicit ec: ExecutionContext, F: Async[F]) =
+    this(grpcServer.getImmutableServices.asScala: _*)(ec, F)
+
+  protected implicit val scheduler: Scheduler = Scheduler(ec)
 
   protected def supportedMethod(d: ServerMethodDefinition[_, _]): Boolean = d.getMethodDescriptor.getType == MethodType.UNARY
   protected val parser: JsonFormat.Parser = JsonFormat.parser()
