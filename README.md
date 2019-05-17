@@ -30,7 +30,7 @@ val s2: ServerServiceDefinition = ???
 val anotherBridge = new ReflectionGrpcJsonBridge[Task](s1, s2)
 
 // call a method manually, with a header specified
-val jsonResponse = bridge.invoke("com.avast.grpc.jsonbridge.test.TestService/Add", "{\"a\":1, \"b\": 2}", Map("My-Header" -> "value"))
+val jsonResponse = bridge.invoke("com.avast.grpc.jsonbridge.test.TestService/Add", """ { "a": 1, "b": 2} """, Map("My-Header" -> "value"))
 ```
 
 ### http4s

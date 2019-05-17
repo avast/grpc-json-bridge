@@ -28,9 +28,9 @@ class ReflectionGrpcJsonBridgeTest extends fixture.FlatSpec with Matchers {
   it must "successfully call the invoke method" in { f =>
     val Right(response) =
       f.bridge
-        .invoke(GrpcMethodName("com.avast.grpc.jsonbridge.test.TestService/Add"), "{\"a\":1, \"b\": 2}", Map.empty)
+        .invoke(GrpcMethodName("com.avast.grpc.jsonbridge.test.TestService/Add"), """ { "a": 1, "b": 2} """, Map.empty)
         .runSyncUnsafe(Duration.Inf)
-    response shouldBe "{\"sum\":3}"
+    response shouldBe """{"sum":3}"""
   }
 
   it must "return expected status code for missing method" in { f =>

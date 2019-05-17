@@ -22,7 +22,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
         Request[Task](
           method = Method.POST,
           uri = Uri.fromString("com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail())
-        ).withEntity("{\"a\":1, \"b\": 2}")
+        ).withEntity(""" { "a": 1, "b": 2} """)
           .withContentType(`Content-Type`(MediaType.application.json, Charset.`UTF-8`))
       )
       .value
@@ -31,7 +31,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
 
     assertResult(org.http4s.Status.Ok)(response.status)
 
-    assertResult("{\"sum\":3}")(response.as[String].runToFuture.futureValue)
+    assertResult("""{"sum":3}""")(response.as[String].runToFuture.futureValue)
 
     assertResult(
       Headers.of(
@@ -47,7 +47,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
       .apply(
         Request[Task](method = Method.POST,
                       uri = Uri.fromString("/abc/def/com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()))
-          .withEntity("{\"a\":1, \"b\": 2}")
+          .withEntity(""" { "a": 1, "b": 2} """)
           .withContentType(`Content-Type`(MediaType.application.json))
       )
       .value
@@ -56,7 +56,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
 
     assertResult(org.http4s.Status.Ok)(response.status)
 
-    assertResult("{\"sum\":3}")(response.as[String].runToFuture.futureValue)
+    assertResult("""{"sum":3}""")(response.as[String].runToFuture.futureValue)
 
     assertResult(
       Headers.of(
@@ -87,7 +87,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
       val Some(response) = service
         .apply(
           Request[Task](method = Method.POST, uri = Uri.fromString("com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()))
-            .withEntity("{\"a\":1, \"b\": 2}")
+            .withEntity(""" { "a": 1, "b": 2} """)
         )
         .value
         .runToFuture
@@ -103,7 +103,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
     val Some(response) = service
       .apply(
         Request[Task](method = Method.POST, uri = Uri.fromString("com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()))
-          .withEntity("{\"a\":1, \"b\": 2}")
+          .withEntity(""" { "a": 1, "b": 2} """)
           .withContentType(`Content-Type`(MediaType.application.json))
       )
       .value
@@ -157,7 +157,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
           method = Method.POST,
           uri = Uri.fromString("com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()),
           headers = Headers.of(Header(TestServiceImpl.HeaderName, headerValue))
-        ).withEntity("{\"a\":1, \"b\": 2}")
+        ).withEntity(""" { "a": 1, "b": 2} """)
           .withContentType(`Content-Type`(MediaType.application.json))
       )
       .value

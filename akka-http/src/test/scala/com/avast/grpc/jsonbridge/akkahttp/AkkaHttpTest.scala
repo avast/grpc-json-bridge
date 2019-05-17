@@ -21,10 +21,10 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
 
   test("basic") {
     val route = AkkaHttp[Task](Configuration.Default)(new ReflectionGrpcJsonBridge[Task](TestServiceImpl.bindService()))
-    Post("/com.avast.grpc.jsonbridge.test.TestService/Add", "{\"a\":1, \"b\": 2}")
+    Post("/com.avast.grpc.jsonbridge.test.TestService/Add", """ { "a": 1, "b": 2} """)
       .withHeaders(AkkaHttp.JsonContentType) ~> route ~> check {
       assertResult(StatusCodes.OK)(status)
-      assertResult("{\"sum\":3}")(responseAs[String])
+      assertResult("""{"sum":3}""")(responseAs[String])
       assertResult(Seq(`Content-Type`(ContentType.WithMissingCharset(MediaType.applicationWithOpenCharset("json")))))(headers)
     }
   }
@@ -32,10 +32,10 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
   test("with path prefix") {
     val configuration = Configuration.Default.copy(pathPrefix = Some(NonEmptyList.of("abc", "def")))
     val route = AkkaHttp[Task](configuration)(new ReflectionGrpcJsonBridge[Task](TestServiceImpl.bindService()))
-    Post("/abc/def/com.avast.grpc.jsonbridge.test.TestService/Add", "{\"a\":1, \"b\": 2}")
+    Post("/abc/def/com.avast.grpc.jsonbridge.test.TestService/Add", """ { "a": 1, "b": 2} """)
       .withHeaders(AkkaHttp.JsonContentType) ~> route ~> check {
       assertResult(StatusCodes.OK)(status)
-      assertResult("{\"sum\":3}")(responseAs[String])
+      assertResult("""{"sum":3}""")(responseAs[String])
     }
   }
 
@@ -47,14 +47,14 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
       assertResult(StatusCodes.BadRequest)(status)
     }
     // no Content-Type header
-    Post("/com.avast.grpc.jsonbridge.test.TestService/Add", "{\"a\":1, \"b\": 2}") ~> route ~> check {
+    Post("/com.avast.grpc.jsonbridge.test.TestService/Add", """ { "a": 1, "b": 2} """) ~> route ~> check {
       assertResult(StatusCodes.BadRequest)(status)
     }
   }
 
   test("propagates user-specified status") {
     val route = AkkaHttp(Configuration.Default)(new ReflectionGrpcJsonBridge[Task](PermissionDeniedTestServiceImpl.bindService()))
-    Post(s"/com.avast.grpc.jsonbridge.test.TestService/Add", "{\"a\":1, \"b\": 2}")
+    Post(s"/com.avast.grpc.jsonbridge.test.TestService/Add", """ { "a": 1, "b": 2} """)
       .withHeaders(AkkaHttp.JsonContentType) ~> route ~> check {
       assertResult(status)(StatusCodes.Forbidden)
     }
@@ -80,10 +80,10 @@ class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
     val headerValue = Random.alphanumeric.take(10).mkString("")
     val route = AkkaHttp[Task](Configuration.Default)(new ReflectionGrpcJsonBridge[Task](TestServiceImpl.withInterceptor))
     val Ok(customHeaderToBeSent, _) = HttpHeader.parse(TestServiceImpl.HeaderName, headerValue)
-    Post("/com.avast.grpc.jsonbridge.test.TestService/Add", "{\"a\":1, \"b\": 2}")
+    Post("/com.avast.grpc.jsonbridge.test.TestService/Add", """ { "a": 1, "b": 2} """)
       .withHeaders(AkkaHttp.JsonContentType, customHeaderToBeSent) ~> route ~> check {
       assertResult(StatusCodes.OK)(status)
-      assertResult("{\"sum\":3}")(responseAs[String])
+      assertResult("""{"sum":3}""")(responseAs[String])
       assertResult(Seq(`Content-Type`(ContentType.WithMissingCharset(MediaType.applicationWithOpenCharset("json")))))(headers)
     }
   }
