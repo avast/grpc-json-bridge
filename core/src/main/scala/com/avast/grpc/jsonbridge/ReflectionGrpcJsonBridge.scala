@@ -38,7 +38,7 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
     services.foreach(b.addService)
     b.build().start()
   }
-  private val inProcessChannel = InProcessChannelBuilder.forName(inProcessServiceName).directExecutor().build()
+  private val inProcessChannel = InProcessChannelBuilder.forName(inProcessServiceName).executor(scheduler).build()
 
   override def close(): Unit = {
     inProcessChannel.shutdownNow()
