@@ -17,8 +17,8 @@ object GrpcJsonBridge {
   }
   object GrpcMethodName {
     def apply(fullMethodName: String): GrpcMethodName = {
-      val s = fullMethodName.split('/')
-      GrpcMethodName(s(0), s(1))
+      val Seq(s, m) = fullMethodName.split('/').toSeq
+      GrpcMethodName(s, m)
     }
   }
 }
