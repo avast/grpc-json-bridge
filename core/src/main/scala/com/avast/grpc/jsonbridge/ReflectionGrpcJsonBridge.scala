@@ -51,55 +51,53 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
 
   // map from full method name to a function that invokes that method
   protected val handlersPerMethod: Map[String, HandlerFunc] =
-    inProcessServer.getImmutableServices.asScala
-      .flatMap(sd => {
-        val generatedClass = getServiceGeneratedClass(sd.getServiceDescriptor)
-        val futureStub = JavaGenericHelper.asAbstractStub(
-          generatedClass
-            .getDeclaredMethod("newFutureStub", classOf[Channel])
-            .invoke(null, inProcessChannel))
-        val methods = sd.getMethods.asScala
-          .filter(supportedMethod)
-          .map(m => {
-            val requestMarshaller = m.getMethodDescriptor.getRequestMarshaller.asInstanceOf[PrototypeMarshaller[_]]
-            val requestMessagePrototype = requestMarshaller.getMessagePrototype.asInstanceOf[Message]
-            val methodName = m.getMethodDescriptor.getFullMethodName.split('/')(1)
-            val javaMethodName = methodName.substring(0, 1).toLowerCase + methodName.substring(1)
-            val stubMethod = futureStub.getClass.getDeclaredMethod(javaMethodName, requestMessagePrototype.getClass)
-            val handler: HandlerFunc = (json, headers) =>
-              Task
-                .deferFuture {
-                  val md = new Metadata()
-                  headers.foreach { case (k, v) => md.put(Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER), v) }
-                  val stubWithHeaders: Any = JavaGenericHelper.attachHeaders(futureStub, md)
-                  val requestBuilder = requestMessagePrototype.newBuilderForType()
-                  val request: Either[Status, Message] = try {
-                    parser.merge(json, requestBuilder)
-                    Right(requestBuilder.build())
-                  } catch {
-                    case NonFatal(ex) =>
-                      val message = "Error while converting JSON to GPB"
-                      logger.warn(message, ex)
-                      ex match {
-                        case e: StatusRuntimeException =>
-                          Left(richStatus(e.getStatus, message, e.getStatus.getCause))
-                        case _ =>
-                          Left(richStatus(Status.INVALID_ARGUMENT, message, ex))
-                      }
-                  }
-                  request match {
-                    case Right(r) =>
-                      val listenableFuture = stubMethod.invoke(stubWithHeaders, r).asInstanceOf[ListenableFuture[MessageOrBuilder]]
-                      toFuture(listenableFuture).map(response => Right(printer.print(response)))
-                    case Left(status) => Future(Left(status))
-                  }
+    inProcessServer.getImmutableServices.asScala.flatMap { sd =>
+      val generatedClass = getServiceGeneratedClass(sd.getServiceDescriptor)
+      val futureStub = JavaGenericHelper.asAbstractStub(
+        generatedClass
+          .getDeclaredMethod("newFutureStub", classOf[Channel])
+          .invoke(null, inProcessChannel))
+      val methods = sd.getMethods.asScala
+        .filter(supportedMethod)
+        .map { m =>
+          val requestMarshaller = m.getMethodDescriptor.getRequestMarshaller.asInstanceOf[PrototypeMarshaller[_]]
+          val requestMessagePrototype = requestMarshaller.getMessagePrototype.asInstanceOf[Message]
+          val methodName = m.getMethodDescriptor.getFullMethodName.split('/')(1)
+          val javaMethodName = methodName.substring(0, 1).toLowerCase + methodName.substring(1)
+          val stubMethod = futureStub.getClass.getDeclaredMethod(javaMethodName, requestMessagePrototype.getClass)
+          val handler: HandlerFunc = (json, headers) =>
+            Task
+              .deferFuture {
+                val md = new Metadata()
+                headers.foreach { case (k, v) => md.put(Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER), v) }
+                val stubWithHeaders: Any = JavaGenericHelper.attachHeaders(futureStub, md)
+                val requestBuilder = requestMessagePrototype.newBuilderForType()
+                val request: Either[Status, Message] = try {
+                  parser.merge(json, requestBuilder)
+                  Right(requestBuilder.build())
+                } catch {
+                  case NonFatal(ex) =>
+                    val message = "Error while converting JSON to GPB"
+                    logger.warn(message, ex)
+                    ex match {
+                      case e: StatusRuntimeException =>
+                        Left(richStatus(e.getStatus, message, e.getStatus.getCause))
+                      case _ =>
+                        Left(richStatus(Status.INVALID_ARGUMENT, message, ex))
+                    }
                 }
-                .to[F]
-            (m.getMethodDescriptor.getFullMethodName, handler)
-          })
-        methods
-      })
-      .toMap
+                request match {
+                  case Right(r) =>
+                    val listenableFuture = stubMethod.invoke(stubWithHeaders, r).asInstanceOf[ListenableFuture[MessageOrBuilder]]
+                    toFuture(listenableFuture).map(response => Right(printer.print(response)))
+                  case Left(status) => Future(Left(status))
+                }
+              }
+              .to[F]
+          (m.getMethodDescriptor.getFullMethodName, handler)
+        }
+      methods
+    }.toMap
 
   override def invoke(methodName: GrpcMethodName, body: String, headers: Map[String, String]): F[Either[Status, String]] =
     handlersPerMethod.get(methodName.fullName) match {
