@@ -10,6 +10,7 @@ import com.typesafe.scalalogging.StrictLogging
 import io.grpc.MethodDescriptor.{MethodType, PrototypeMarshaller}
 import io.grpc._
 import io.grpc.inprocess.{InProcessChannelBuilder, InProcessServerBuilder}
+import io.grpc.stub.AbstractStub
 import monix.eval.Task
 import monix.execution.Scheduler
 
@@ -51,26 +52,22 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
 
   // map from full method name to a function that invokes that method
   protected val handlersPerMethod: Map[String, HandlerFunc] =
-    inProcessServer.getImmutableServices.asScala.flatMap { sd =>
-      val generatedClass = getServiceGeneratedClass(sd.getServiceDescriptor)
-      val futureStub = JavaGenericHelper.asAbstractStub(
-        generatedClass
-          .getDeclaredMethod("newFutureStub", classOf[Channel])
-          .invoke(null, inProcessChannel))
-      val methods = sd.getMethods.asScala
+    inProcessServer.getImmutableServices.asScala.flatMap { ssd =>
+      val newFutureStub = createNewFutureStubFunction(ssd)
+      val methods = ssd.getMethods.asScala
         .filter(supportedMethod)
         .map { m =>
           val requestMarshaller = m.getMethodDescriptor.getRequestMarshaller.asInstanceOf[PrototypeMarshaller[_]]
           val requestMessagePrototype = requestMarshaller.getMessagePrototype.asInstanceOf[Message]
           val methodName = m.getMethodDescriptor.getFullMethodName.split('/')(1)
           val javaMethodName = methodName.substring(0, 1).toLowerCase + methodName.substring(1)
-          val stubMethod = futureStub.getClass.getDeclaredMethod(javaMethodName, requestMessagePrototype.getClass)
+          val stubMethod = newFutureStub().getClass.getDeclaredMethod(javaMethodName, requestMessagePrototype.getClass)
           val handler: HandlerFunc = (json, headers) =>
             Task
               .deferFuture {
                 val md = new Metadata()
                 headers.foreach { case (k, v) => md.put(Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER), v) }
-                val stubWithHeaders: Any = JavaGenericHelper.attachHeaders(futureStub, md)
+                val stubWithHeaders: Any = JavaGenericHelper.attachHeaders(newFutureStub(), md)
                 val requestBuilder = requestMessagePrototype.newBuilderForType()
                 val request: Either[Status, Message] = try {
                   parser.merge(json, requestBuilder)
@@ -99,6 +96,17 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
       methods
     }.toMap
 
+  private def createNewFutureStubFunction(ssd: ServerServiceDefinition): () => AbstractStub[_] = {
+    val method = getServiceGeneratedClass(ssd.getServiceDescriptor).getDeclaredMethod("newFutureStub", classOf[Channel])
+    () =>
+      JavaGenericHelper.asAbstractStub(method.invoke(null, inProcessChannel))
+  }
+
+  protected def getServiceGeneratedClass(sd: ServiceDescriptor): Class[_] = {
+    val className = if (sd.getName.startsWith("grpc.")) "io." + sd.getName + "Grpc" else sd.getName + "Grpc"
+    Class.forName(className)
+  }
+
   override def invoke(methodName: GrpcMethodName, body: String, headers: Map[String, String]): F[Either[Status, String]] =
     handlersPerMethod.get(methodName.fullName) match {
       case None => F.pure(Left(Status.NOT_FOUND.withDescription(s"Method '$methodName' not found")))
@@ -125,11 +133,6 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
 
   override val methodsNames: Seq[GrpcMethodName] = handlersPerMethod.keys.map(m => GrpcMethodName(m)).toSeq
   override val servicesNames: Seq[String] = methodsNames.map(_.service).distinct
-
-  protected def getServiceGeneratedClass(sd: ServiceDescriptor): Class[_] = {
-    val className = if (sd.getName.startsWith("grpc.")) "io." + sd.getName + "Grpc" else sd.getName + "Grpc"
-    Class.forName(className)
-  }
 
   private def richStatus(status: Status, description: String, cause: Throwable): Status = {
     val d = Option(status.getDescription).getOrElse(description)
