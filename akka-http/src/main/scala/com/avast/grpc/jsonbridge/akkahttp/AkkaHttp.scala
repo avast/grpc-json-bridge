@@ -12,6 +12,7 @@ import io.grpc.Status.Code
 import monix.eval.Task
 import monix.execution.Scheduler
 
+import scala.concurrent.ExecutionContext
 import scala.language.higherKinds
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
@@ -22,7 +23,9 @@ object AkkaHttp {
     ContentType.WithMissingCharset(MediaType.applicationWithOpenCharset("json"))
   }
 
-  def apply[F[_]: Effect](configuration: Configuration)(bridge: GrpcJsonBridge[F])(implicit scheduler: Scheduler): Route = {
+  def apply[F[_]: Effect](configuration: Configuration)(bridge: GrpcJsonBridge[F])(implicit ec: ExecutionContext): Route = {
+    implicit val sch: Scheduler = Scheduler(ec)
+
     val pathPattern = configuration.pathPrefix
       .map {
         case NonEmptyList(head, tail) =>
