@@ -11,7 +11,7 @@ import io.grpc.{Status => GrpcStatus}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.{`Content-Type`, `WWW-Authenticate`}
 import org.http4s.server.middleware.{CORS, CORSConfig}
-import org.http4s.{Challenge, Header, HttpRoutes, MediaType, Response}
+import org.http4s.{Challenge, Header, Headers, HttpRoutes, MediaType, Response}
 
 import scala.language.higherKinds
 
@@ -50,9 +50,7 @@ object Http4s extends StrictLogging {
                 request
                   .as[String]
                   .flatMap { body =>
-                    bridge.invoke(GrpcMethodName(serviceName, methodName),
-                                  body,
-                                  request.headers.toList.map(h => (h.name.value, h.value)).toMap)
+                    bridge.invoke(GrpcMethodName(serviceName, methodName), body, mapHeaders(request.headers))
                   }
                   .flatMap {
                     case Right(resp) => Ok(resp, `Content-Type`(MediaType.application.json))
@@ -80,6 +78,8 @@ object Http4s extends StrictLogging {
       case None => http4sService
     }
   }
+
+  private def mapHeaders(headers: Headers): Map[String, String] = headers.toList.map(h => (h.name.value, h.value)).toMap
 
   private def mapStatus[F[_]: Sync](s: GrpcStatus, configuration: Configuration)(implicit h: Http4sDsl[F]): F[Response[F]] = {
     import h._

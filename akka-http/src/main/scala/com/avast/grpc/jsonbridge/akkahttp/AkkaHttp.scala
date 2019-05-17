@@ -42,7 +42,7 @@ object AkkaHttp {
             case Some(`JsonContentType`) =>
               entity(as[String]) { json =>
                 val methodCall = Task.fromEffect {
-                  bridge.invoke(GrpcMethodName(serviceName, methodName), json, req.headers.map(h => (h.name(), h.value())).toMap)
+                  bridge.invoke(GrpcMethodName(serviceName, methodName), json, mapHeaders(req.headers))
                 }.runToFuture
 
                 onComplete(methodCall) {
@@ -75,6 +75,8 @@ object AkkaHttp {
       }
     }
   }
+
+  private def mapHeaders(headers: Seq[HttpHeader]): Map[String, String] = headers.toList.map(h => (h.name(), h.value())).toMap
 
   private def mapStatus(s: io.grpc.Status): StatusCode = s.getCode match {
     case Code.NOT_FOUND => StatusCodes.NotFound
