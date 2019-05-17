@@ -87,7 +87,7 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
                   case Right(r) =>
                     val listenableFuture = stubMethod.invoke(stubWithHeaders, r).asInstanceOf[ListenableFuture[MessageOrBuilder]]
                     toFuture(listenableFuture).map(response => Right(printer.print(response)))
-                  case Left(status) => Future(Left(status))
+                  case Left(status) => Future.successful(Left(status))
                 }
               }
               .to[F]
