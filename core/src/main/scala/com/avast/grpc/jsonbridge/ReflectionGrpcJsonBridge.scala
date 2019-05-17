@@ -61,7 +61,7 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
         .map { m =>
           val requestMarshaller = m.getMethodDescriptor.getRequestMarshaller.asInstanceOf[PrototypeMarshaller[_]]
           val requestMessagePrototype = requestMarshaller.getMessagePrototype.asInstanceOf[Message]
-          val methodName = m.getMethodDescriptor.getFullMethodName.split('/')(1)
+          val Seq(_, methodName) = m.getMethodDescriptor.getFullMethodName.split('/').toSeq
           val javaMethodName = methodName.substring(0, 1).toLowerCase + methodName.substring(1)
           val stubMethod = newFutureStub().getClass.getDeclaredMethod(javaMethodName, requestMessagePrototype.getClass)
           val handler: HandlerFunc = (json, headers) =>
