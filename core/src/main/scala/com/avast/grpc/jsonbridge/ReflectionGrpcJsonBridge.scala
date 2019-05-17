@@ -10,7 +10,7 @@ import com.typesafe.scalalogging.StrictLogging
 import io.grpc.MethodDescriptor.{MethodType, PrototypeMarshaller}
 import io.grpc._
 import io.grpc.inprocess.{InProcessChannelBuilder, InProcessServerBuilder}
-import io.grpc.stub.{AbstractStub, MetadataUtils}
+import io.grpc.stub.AbstractStub
 import monix.eval.Task
 import monix.execution.Scheduler
 
@@ -68,21 +68,7 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
                 val md = new Metadata()
                 headers.foreach { case (k, v) => md.put(Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER), v) }
                 val stubWithHeaders: AbstractStub[_] = JavaGenericHelper.attachHeaders(newFutureStub(), md)
-                val requestBuilder = requestMessagePrototype.newBuilderForType()
-                val request: Either[Status, Message] = try {
-                  parser.merge(json, requestBuilder)
-                  Right(requestBuilder.build())
-                } catch {
-                  case NonFatal(ex) =>
-                    val message = "Error while converting JSON to GPB"
-                    logger.warn(message, ex)
-                    ex match {
-                      case e: StatusRuntimeException =>
-                        Left(richStatus(e.getStatus, message, e.getStatus.getCause))
-                      case _ =>
-                        Left(richStatus(Status.INVALID_ARGUMENT, message, ex))
-                    }
-                }
+                val request = parseRequest(json, requestMessagePrototype)
                 request match {
                   case Right(r) =>
                     val listenableFuture = stubMethod.invoke(stubWithHeaders, r).asInstanceOf[ListenableFuture[MessageOrBuilder]]
@@ -95,6 +81,23 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
         }
       methods
     }.toMap
+
+  private def parseRequest(json: String, requestMessage: Message): Either[Status, Message] =
+    try {
+      val requestBuilder = requestMessage.newBuilderForType()
+      parser.merge(json, requestBuilder)
+      Right(requestBuilder.build())
+    } catch {
+      case NonFatal(ex) =>
+        val message = "Error while converting JSON to GPB"
+        logger.warn(message, ex)
+        ex match {
+          case e: StatusRuntimeException =>
+            Left(richStatus(e.getStatus, message, e.getStatus.getCause))
+          case _ =>
+            Left(richStatus(Status.INVALID_ARGUMENT, message, ex))
+        }
+    }
 
   private def createNewFutureStubFunction(ssd: ServerServiceDefinition): () => AbstractStub[_] = {
     val method = getServiceGeneratedClass(ssd.getServiceDescriptor).getDeclaredMethod("newFutureStub", classOf[Channel])
