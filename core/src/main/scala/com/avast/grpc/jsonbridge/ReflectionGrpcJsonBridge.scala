@@ -10,7 +10,7 @@ import com.typesafe.scalalogging.StrictLogging
 import io.grpc.MethodDescriptor.{MethodType, PrototypeMarshaller}
 import io.grpc._
 import io.grpc.inprocess.{InProcessChannelBuilder, InProcessServerBuilder}
-import io.grpc.stub.AbstractStub
+import io.grpc.stub.{AbstractStub, MetadataUtils}
 import monix.eval.Task
 import monix.execution.Scheduler
 
@@ -67,7 +67,7 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
               .deferFuture {
                 val md = new Metadata()
                 headers.foreach { case (k, v) => md.put(Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER), v) }
-                val stubWithHeaders: Any = JavaGenericHelper.attachHeaders(newFutureStub(), md)
+                val stubWithHeaders: AbstractStub[_] = JavaGenericHelper.attachHeaders(newFutureStub(), md)
                 val requestBuilder = requestMessagePrototype.newBuilderForType()
                 val request: Either[Status, Message] = try {
                   parser.merge(json, requestBuilder)
@@ -99,7 +99,7 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
   private def createNewFutureStubFunction(ssd: ServerServiceDefinition): () => AbstractStub[_] = {
     val method = getServiceGeneratedClass(ssd.getServiceDescriptor).getDeclaredMethod("newFutureStub", classOf[Channel])
     () =>
-      JavaGenericHelper.asAbstractStub(method.invoke(null, inProcessChannel))
+      method.invoke(null, inProcessChannel).asInstanceOf[AbstractStub[_]]
   }
 
   protected def getServiceGeneratedClass(sd: ServiceDescriptor): Class[_] = {

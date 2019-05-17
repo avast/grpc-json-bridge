@@ -9,10 +9,10 @@ class JavaGenericHelper {
     private JavaGenericHelper() {
     }
 
-    public static <T extends AbstractStub<T>> AbstractStub<T> asAbstractStub(Object o) {
-        return (T)o;
-    }
-
+    /*
+     * It's problematic to call self-bounded generic method from Scala,
+     *  in this case the attachHeaders method has this generic: <T extends AbstractStub<T>>
+     */
     public static AbstractStub attachHeaders(Object stub, Metadata extraHeaders) {
         return MetadataUtils.attachHeaders((AbstractStub) stub, extraHeaders);
     }
