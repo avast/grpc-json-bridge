@@ -12,6 +12,9 @@ trait GrpcJsonBridge[F[_]] {
 }
 
 object GrpcJsonBridge {
+  /*
+   * Represents gRPC method name - it consists of service name (it includes package) and method name.
+   */
   case class GrpcMethodName(service: String, method: String) {
     val fullName: String = service + "/" + method
   }
