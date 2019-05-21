@@ -1,9 +1,11 @@
 package com.avast.grpc.jsonbridge
 
+import java.util.concurrent.Executor
+
 import cats.effect.Async
 import cats.syntax.all._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
-import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
+import com.google.common.util.concurrent.{FluentFuture, FutureCallback, Futures, ListenableFuture}
 import com.google.protobuf.util.JsonFormat
 import com.google.protobuf.{Message, MessageOrBuilder}
 import com.typesafe.scalalogging.StrictLogging
@@ -11,23 +13,18 @@ import io.grpc.MethodDescriptor.{MethodType, PrototypeMarshaller}
 import io.grpc._
 import io.grpc.inprocess.{InProcessChannelBuilder, InProcessServerBuilder}
 import io.grpc.stub.AbstractStub
-import monix.eval.Task
-import monix.execution.Scheduler
 
 import scala.collection.JavaConverters._
-import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.higherKinds
 import scala.util.control.NonFatal
 
-class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implicit val ec: ExecutionContext, val F: Async[F])
+class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implicit val executor: Executor, val F: Async[F])
     extends GrpcJsonBridge[F]
     with AutoCloseable
     with StrictLogging {
 
-  def this(grpcServer: io.grpc.Server)(implicit ec: ExecutionContext, F: Async[F]) =
-    this(grpcServer.getImmutableServices.asScala: _*)(ec, F)
-
-  protected implicit val scheduler: Scheduler = Scheduler(ec)
+  def this(grpcServer: io.grpc.Server)(implicit executor: Executor, F: Async[F]) =
+    this(grpcServer.getImmutableServices.asScala: _*)(executor, F)
 
   protected def supportedMethod(d: ServerMethodDefinition[_, _]): Boolean = d.getMethodDescriptor.getType == MethodType.UNARY
   protected val parser: JsonFormat.Parser = JsonFormat.parser()
@@ -37,11 +34,11 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
 
   private val inProcessServiceName = s"HttpWrapper-${System.nanoTime()}"
   private val inProcessServer = {
-    val b = InProcessServerBuilder.forName(inProcessServiceName).executor(scheduler)
+    val b = InProcessServerBuilder.forName(inProcessServiceName).executor(executor)
     services.foreach(b.addService)
     b.build().start()
   }
-  private val inProcessChannel = InProcessChannelBuilder.forName(inProcessServiceName).executor(scheduler).build()
+  private val inProcessChannel = InProcessChannelBuilder.forName(inProcessServiceName).executor(executor).build()
 
   override def close(): Unit = {
     inProcessChannel.shutdownNow()
@@ -65,20 +62,19 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
           val javaMethodName = methodName.substring(0, 1).toLowerCase + methodName.substring(1)
           val stubMethod = newFutureStub().getClass.getDeclaredMethod(javaMethodName, requestMessagePrototype.getClass)
           val handler: HandlerFunc = (json, headers) =>
-            Task
-              .deferFuture {
-                val md = new Metadata()
-                headers.foreach { case (k, v) => md.put(Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER), v) }
-                val stubWithHeaders: AbstractStub[_] = JavaGenericHelper.attachHeaders(newFutureStub(), md)
-                val request = parseRequest(json, requestMessagePrototype)
-                request match {
-                  case Right(r) =>
-                    val listenableFuture = stubMethod.invoke(stubWithHeaders, r).asInstanceOf[ListenableFuture[MessageOrBuilder]]
-                    toFuture(listenableFuture).map(response => Right(printer.print(response)))
-                  case Left(status) => Future.successful(Left(status))
-                }
+            fromListenableFuture(F.delay {
+              val md = new Metadata()
+              headers.foreach { case (k, v) => md.put(Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER), v) }
+              val stubWithHeaders: AbstractStub[_] = JavaGenericHelper.attachHeaders(newFutureStub(), md)
+              val request = parseRequest(json, requestMessagePrototype)
+              request match {
+                case Right(r) =>
+                  FluentFuture
+                    .from(stubMethod.invoke(stubWithHeaders, r).asInstanceOf[ListenableFuture[MessageOrBuilder]])
+                    .transform(response => Right(printer.print(response)), executor)
+                case Left(status) => Futures.immediateFuture(Left(status))
               }
-              .to[F]
+            })
           (m.getMethodDescriptor.getFullMethodName, handler)
         }
       methods
@@ -145,13 +141,13 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
     status.withDescription(d).withCause(c)
   }
 
-  private def toFuture[T](lf: ListenableFuture[T]): Future[T] = {
-    val p = Promise[T]()
-    Futures.addCallback(lf, new FutureCallback[T] {
-      def onFailure(t: Throwable): Unit = p failure t
-      def onSuccess(result: T): Unit = p success result
-    }, scheduler)
-    p.future
+  private def fromListenableFuture[T](flf: F[ListenableFuture[T]]): F[T] = F.flatMap(flf) { lf =>
+    F.async { cb =>
+      Futures.addCallback(lf, new FutureCallback[T] {
+        def onFailure(t: Throwable): Unit = cb(Left(t))
+        def onSuccess(result: T): Unit = cb(Right(result))
+      }, executor)
+    }
   }
 
 }
