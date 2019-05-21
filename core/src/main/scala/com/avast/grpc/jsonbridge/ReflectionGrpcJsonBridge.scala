@@ -1,5 +1,6 @@
 package com.avast.grpc.jsonbridge
 
+import java.lang.reflect.Method
 import java.util.concurrent.Executor
 
 import cats.effect.Async
@@ -71,24 +72,28 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
         }
     }.toMap
 
-  private def executeRequest(createFutureStub: () => AbstractStub[_], requestMessagePrototype: Message, javaMethodName: String)(
+  private def executeRequest(createFutureStub: F[AbstractStub[_]], requestMessagePrototype: Message, javaMethodName: String)(
       req: Message,
       headers: Map[String, String]): F[MessageOrBuilder] = {
-    F.delay {
-        val futureStub: AbstractStub[_] = createFutureStub()
-        val method = futureStub.getClass.getDeclaredMethod(javaMethodName, requestMessagePrototype.getClass)
 
-        val md = new Metadata()
-        headers.foreach { case (k, v) => md.put(Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER), v) }
+    def createMetadata(): Metadata = {
+      val md = new Metadata()
+      headers.foreach { case (k, v) => md.put(Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER), v) }
+      md
+    }
 
-        (method, JavaGenericHelper.attachHeaders(futureStub, md))
-      }
-      .flatMap {
-        case (method, stub) =>
-          fromListenableFuture(F.delay {
-            method.invoke(stub, req).asInstanceOf[ListenableFuture[MessageOrBuilder]]
-          })
-      }
+    for {
+      futureStub <- createFutureStub
+      method = futureStub.getClass.getDeclaredMethod(javaMethodName, requestMessagePrototype.getClass)
+      stubWithHeaders = JavaGenericHelper.attachHeaders(futureStub, createMetadata())
+      resp <- executeRequest(stubWithHeaders, method, req)
+    } yield resp
+  }
+
+  private def executeRequest(stubWithHeaders: AbstractStub[_], method: Method, req: Message): F[MessageOrBuilder] = {
+    fromListenableFuture(F.delay {
+      method.invoke(stubWithHeaders, req).asInstanceOf[ListenableFuture[MessageOrBuilder]]
+    })
   }
 
   private def getJavaMethodName(method: ServerMethodDefinition[_, _]): String = {
@@ -118,15 +123,15 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
         }
     }
 
-  private def createNewFutureStubFunction(ssd: ServerServiceDefinition): () => AbstractStub[_] = {
+  private def createNewFutureStubFunction(ssd: ServerServiceDefinition): F[AbstractStub[_]] = F.delay {
     val method = getServiceGeneratedClass(ssd.getServiceDescriptor).getDeclaredMethod("newFutureStub", classOf[Channel])
-    () =>
-      method.invoke(null, inProcessChannel).asInstanceOf[AbstractStub[_]]
+    method.invoke(null, inProcessChannel).asInstanceOf[AbstractStub[_]]
   }
 
   protected def getServiceGeneratedClass(sd: ServiceDescriptor): Class[_] = {
-    val className = if (sd.getName.startsWith("grpc.")) "io." + sd.getName + "Grpc" else sd.getName + "Grpc"
-    Class.forName(className)
+    Class.forName {
+      if (sd.getName.startsWith("grpc.")) "io." + sd.getName + "Grpc" else sd.getName + "Grpc"
+    }
   }
 
   override def invoke(methodName: GrpcMethodName, body: String, headers: Map[String, String]): F[Either[Status, String]] =
