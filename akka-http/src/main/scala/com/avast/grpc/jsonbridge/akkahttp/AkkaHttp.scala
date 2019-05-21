@@ -1,5 +1,6 @@
 package com.avast.grpc.jsonbridge.akkahttp
 
+import cats.effect.implicits._
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.`Content-Type`
 import akka.http.scaladsl.server.Directives._
@@ -9,8 +10,6 @@ import cats.effect.Effect
 import com.avast.grpc.jsonbridge.GrpcJsonBridge
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import io.grpc.Status.Code
-import monix.eval.Task
-import monix.execution.Scheduler
 
 import scala.concurrent.ExecutionContext
 import scala.language.higherKinds
@@ -24,7 +23,6 @@ object AkkaHttp {
   }
 
   def apply[F[_]: Effect](configuration: Configuration)(bridge: GrpcJsonBridge[F])(implicit ec: ExecutionContext): Route = {
-    implicit val sch: Scheduler = Scheduler(ec)
 
     val pathPattern = configuration.pathPrefix
       .map {
@@ -44,10 +42,10 @@ object AkkaHttp {
           req.header[`Content-Type`] match {
             case Some(`JsonContentType`) =>
               entity(as[String]) { json =>
-                val methodCall = Task.fromEffect {
-                  bridge.invoke(GrpcMethodName(serviceName, methodName), json, mapHeaders(req.headers))
-                }.runToFuture
-
+                val methodCall = bridge
+                  .invoke(GrpcMethodName(serviceName, methodName), json, mapHeaders(req.headers))
+                  .toIO
+                  .unsafeToFuture()
                 onComplete(methodCall) {
                   case Success(Right(r)) =>
                     respondWithHeader(JsonContentType) {

@@ -132,7 +132,6 @@ lazy val akkaHttp = (project in file("akka-http")).settings(
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-http" % Versions.akkaHttp,
     "com.typesafe.akka" %% "akka-stream" % "2.5.21",
-    "io.monix" %% "monix" % "3.0.0-RC2",
     "com.typesafe.akka" %% "akka-http-testkit" % Versions.akkaHttp % "test"
   ),
 ).dependsOn(core)
