@@ -3,9 +3,10 @@ package com.avast.grpc.jsonbridge
 import java.lang.reflect.Method
 import java.util.concurrent.Executor
 
-import cats.effect.Async
+import cats.effect.{Async, Sync}
 import cats.syntax.all._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
+import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge._
 import com.google.common.util.concurrent._
 import com.google.protobuf.util.JsonFormat
 import com.google.protobuf.{Message, MessageOrBuilder}
@@ -26,19 +27,14 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
 
   def this(grpcServer: io.grpc.Server)(implicit executor: Executor, F: Async[F]) = this(grpcServer.getImmutableServices.asScala: _*)
 
-  protected def isSupportedMethod(d: ServerMethodDefinition[_, _]): Boolean = d.getMethodDescriptor.getType == MethodType.UNARY
-
-  protected val parser: JsonFormat.Parser = JsonFormat.parser()
-  protected val printer: JsonFormat.Printer = {
-    JsonFormat.printer().includingDefaultValueFields().omittingInsignificantWhitespace()
-  }
-
   private val inProcessServiceName = s"HttpWrapper-${System.nanoTime()}"
+
   private val inProcessServer = {
     val b = InProcessServerBuilder.forName(inProcessServiceName).executor(executor)
     services.foreach(b.addService)
     b.build().start()
   }
+
   private val inProcessChannel = InProcessChannelBuilder.forName(inProcessServiceName).executor(executor).build()
 
   override def close(): Unit = {
@@ -59,7 +55,7 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
           val requestMessagePrototype = getRequestMessagePrototype(method)
           val javaMethodName = getJavaMethodName(method)
 
-          val execute = executeRequest(createNewFutureStubFunction(ssd), requestMessagePrototype, javaMethodName) _
+          val execute = executeRequest(createNewFutureStubFunction(inProcessChannel, ssd), requestMessagePrototype, javaMethodName) _
 
           val handler: HandlerFunc = (json, headers) => {
             parseRequest(json, requestMessagePrototype) match {
@@ -71,68 +67,6 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
           (method.getMethodDescriptor.getFullMethodName, handler)
         }
     }.toMap
-
-  private def executeRequest(createFutureStub: F[AbstractStub[_]], requestMessagePrototype: Message, javaMethodName: String)(
-      req: Message,
-      headers: Map[String, String]): F[MessageOrBuilder] = {
-
-    def createMetadata(): Metadata = {
-      val md = new Metadata()
-      headers.foreach { case (k, v) => md.put(Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER), v) }
-      md
-    }
-
-    for {
-      futureStub <- createFutureStub
-      method = futureStub.getClass.getDeclaredMethod(javaMethodName, requestMessagePrototype.getClass)
-      stubWithHeaders = JavaGenericHelper.attachHeaders(futureStub, createMetadata())
-      resp <- executeRequest(stubWithHeaders, method, req)
-    } yield resp
-  }
-
-  private def executeRequest(stubWithHeaders: AbstractStub[_], method: Method, req: Message): F[MessageOrBuilder] = {
-    fromListenableFuture(F.delay {
-      method.invoke(stubWithHeaders, req).asInstanceOf[ListenableFuture[MessageOrBuilder]]
-    })
-  }
-
-  private def getJavaMethodName(method: ServerMethodDefinition[_, _]): String = {
-    val Seq(_, methodName) = method.getMethodDescriptor.getFullMethodName.split('/').toSeq
-    methodName.substring(0, 1).toLowerCase + methodName.substring(1)
-  }
-
-  private def getRequestMessagePrototype(method: ServerMethodDefinition[_, _]): Message = {
-    val requestMarshaller = method.getMethodDescriptor.getRequestMarshaller.asInstanceOf[PrototypeMarshaller[_]]
-    requestMarshaller.getMessagePrototype.asInstanceOf[Message]
-  }
-
-  private def parseRequest(json: String, requestMessage: Message): Either[Status, Message] =
-    try {
-      val requestBuilder = requestMessage.newBuilderForType()
-      parser.merge(json, requestBuilder)
-      Right(requestBuilder.build())
-    } catch {
-      case NonFatal(ex) =>
-        val message = "Error while converting JSON to GPB"
-        logger.warn(message, ex)
-        ex match {
-          case e: StatusRuntimeException =>
-            Left(richStatus(e.getStatus, message, e.getStatus.getCause))
-          case _ =>
-            Left(richStatus(Status.INVALID_ARGUMENT, message, ex))
-        }
-    }
-
-  private def createNewFutureStubFunction(ssd: ServerServiceDefinition): F[AbstractStub[_]] = F.delay {
-    val method = getServiceGeneratedClass(ssd.getServiceDescriptor).getDeclaredMethod("newFutureStub", classOf[Channel])
-    method.invoke(null, inProcessChannel).asInstanceOf[AbstractStub[_]]
-  }
-
-  protected def getServiceGeneratedClass(sd: ServiceDescriptor): Class[_] = {
-    Class.forName {
-      if (sd.getName.startsWith("grpc.")) "io." + sd.getName + "Grpc" else sd.getName + "Grpc"
-    }
-  }
 
   override def invoke(methodName: GrpcMethodName, body: String, headers: Map[String, String]): F[Either[Status, String]] =
     handlersPerMethod.get(methodName.fullName) match {
@@ -161,19 +95,97 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
   override val methodsNames: Seq[GrpcMethodName] = handlersPerMethod.keys.map(m => GrpcMethodName(m)).toSeq
   override val servicesNames: Seq[String] = methodsNames.map(_.service).distinct
 
+}
+
+object ReflectionGrpcJsonBridge extends StrictLogging {
+
+  private val parser: JsonFormat.Parser = JsonFormat.parser()
+
+  private val printer: JsonFormat.Printer = {
+    JsonFormat.printer().includingDefaultValueFields().omittingInsignificantWhitespace()
+  }
+
+  private def createNewFutureStubFunction[F[_]](inProcessChannel: Channel, ssd: ServerServiceDefinition)(
+      implicit F: Sync[F]): F[AbstractStub[_]] = F.delay {
+    val method = getServiceGeneratedClass(ssd.getServiceDescriptor).getDeclaredMethod("newFutureStub", classOf[Channel])
+    method.invoke(null, inProcessChannel).asInstanceOf[AbstractStub[_]]
+  }
+
+  private def executeRequest[F[_]](createFutureStub: F[AbstractStub[_]], requestMessagePrototype: Message, javaMethodName: String)(
+      req: Message,
+      headers: Map[String, String])(implicit executor: Executor, F: Async[F]): F[MessageOrBuilder] = {
+
+    def createMetadata(): Metadata = {
+      val md = new Metadata()
+      headers.foreach { case (k, v) => md.put(Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER), v) }
+      md
+    }
+
+    for {
+      futureStub <- createFutureStub
+      method = futureStub.getClass.getDeclaredMethod(javaMethodName, requestMessagePrototype.getClass)
+      stubWithHeaders = JavaGenericHelper.attachHeaders(futureStub, createMetadata())
+      resp <- executeRequest(stubWithHeaders, method, req)
+    } yield resp
+  }
+
+  private def executeRequest[F[_]](stubWithHeaders: AbstractStub[_], method: Method, req: Message)(implicit executor: Executor,
+                                                                                                   F: Async[F]): F[MessageOrBuilder] = {
+    fromListenableFuture(F.delay {
+      method.invoke(stubWithHeaders, req).asInstanceOf[ListenableFuture[MessageOrBuilder]]
+    })
+  }
+
+  private def isSupportedMethod(d: ServerMethodDefinition[_, _]): Boolean = d.getMethodDescriptor.getType == MethodType.UNARY
+
+  private def getServiceGeneratedClass(sd: ServiceDescriptor): Class[_] = {
+    Class.forName {
+      if (sd.getName.startsWith("grpc.")) "io." + sd.getName + "Grpc" else sd.getName + "Grpc"
+    }
+  }
+
+  private def fromListenableFuture[F[_], T](flf: F[ListenableFuture[T]])(implicit executor: Executor, F: Async[F]): F[T] = flf.flatMap {
+    lf =>
+      F.async { cb =>
+        Futures.addCallback(lf, new FutureCallback[T] {
+          def onFailure(t: Throwable): Unit = cb(Left(t))
+
+          def onSuccess(result: T): Unit = cb(Right(result))
+        }, executor)
+      }
+  }
+
+  private def getJavaMethodName(method: ServerMethodDefinition[_, _]): String = {
+    val Seq(_, methodName) = method.getMethodDescriptor.getFullMethodName.split('/').toSeq
+    methodName.substring(0, 1).toLowerCase + methodName.substring(1)
+  }
+
+  private def getRequestMessagePrototype(method: ServerMethodDefinition[_, _]): Message = {
+    val requestMarshaller = method.getMethodDescriptor.getRequestMarshaller.asInstanceOf[PrototypeMarshaller[_]]
+    requestMarshaller.getMessagePrototype.asInstanceOf[Message]
+  }
+
   private def richStatus(status: Status, description: String, cause: Throwable): Status = {
     val d = Option(status.getDescription).getOrElse(description)
     val c = Option(status.getCause).getOrElse(cause)
     status.withDescription(d).withCause(c)
   }
 
-  private def fromListenableFuture[T](flf: F[ListenableFuture[T]]): F[T] = F.flatMap(flf) { lf =>
-    F.async { cb =>
-      Futures.addCallback(lf, new FutureCallback[T] {
-        def onFailure(t: Throwable): Unit = cb(Left(t))
-        def onSuccess(result: T): Unit = cb(Right(result))
-      }, executor)
+  private def parseRequest(json: String, requestMessage: Message): Either[Status, Message] =
+    try {
+      val requestBuilder = requestMessage.newBuilderForType()
+      parser.merge(json, requestBuilder)
+      Right(requestBuilder.build())
+    } catch {
+      case NonFatal(ex) =>
+        val message = "Error while converting JSON to GPB"
+        logger.warn(message, ex)
+        ex match {
+          case e: StatusRuntimeException =>
+            Left(richStatus(e.getStatus, message, e.getStatus.getCause))
+          case _ =>
+            Left(richStatus(Status.INVALID_ARGUMENT, message, ex))
+        }
     }
-  }
 
 }
