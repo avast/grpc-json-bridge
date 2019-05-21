@@ -5,7 +5,7 @@ import java.util.concurrent.Executor
 import cats.effect.Async
 import cats.syntax.all._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
-import com.google.common.util.concurrent.{FluentFuture, FutureCallback, Futures, ListenableFuture}
+import com.google.common.util.concurrent._
 import com.google.protobuf.util.JsonFormat
 import com.google.protobuf.{Message, MessageOrBuilder}
 import com.typesafe.scalalogging.StrictLogging
@@ -52,31 +52,44 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
   // map from full method name to a function that invokes that method
   protected val handlersPerMethod: Map[String, HandlerFunc] =
     inProcessServer.getImmutableServices.asScala.flatMap { ssd =>
-      val newFutureStub = createNewFutureStubFunction(ssd)
-      val methods = ssd.getMethods.asScala
+      ssd.getMethods.asScala
         .filter(isSupportedMethod)
-        .map { m =>
-          val requestMessagePrototype = getRequestMessagePrototype(m)
-          val javaMethodName = getJavaMethodName(m)
-          val stubMethod = newFutureStub().getClass.getDeclaredMethod(javaMethodName, requestMessagePrototype.getClass)
-          val handler: HandlerFunc = (json, headers) =>
-            fromListenableFuture(F.delay {
-              val md = new Metadata()
-              headers.foreach { case (k, v) => md.put(Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER), v) }
-              val stubWithHeaders: AbstractStub[_] = JavaGenericHelper.attachHeaders(newFutureStub(), md)
-              val request = parseRequest(json, requestMessagePrototype)
-              request match {
-                case Right(r) =>
-                  FluentFuture
-                    .from(stubMethod.invoke(stubWithHeaders, r).asInstanceOf[ListenableFuture[MessageOrBuilder]])
-                    .transform(response => Right(printer.print(response)), executor)
-                case Left(status) => Futures.immediateFuture(Left(status))
-              }
-            })
-          (m.getMethodDescriptor.getFullMethodName, handler)
+        .map { method =>
+          val requestMessagePrototype = getRequestMessagePrototype(method)
+          val javaMethodName = getJavaMethodName(method)
+
+          val execute = executeRequest(createNewFutureStubFunction(ssd), requestMessagePrototype, javaMethodName) _
+
+          val handler: HandlerFunc = (json, headers) => {
+            parseRequest(json, requestMessagePrototype) match {
+              case Right(req) => execute(req, headers).map(resp => Right(printer.print(resp)))
+              case Left(status) => F.pure(Left(status))
+            }
+          }
+
+          (method.getMethodDescriptor.getFullMethodName, handler)
         }
-      methods
     }.toMap
+
+  private def executeRequest(createFutureStub: () => AbstractStub[_], requestMessagePrototype: Message, javaMethodName: String)(
+      req: Message,
+      headers: Map[String, String]): F[MessageOrBuilder] = {
+    F.delay {
+        val futureStub: AbstractStub[_] = createFutureStub()
+        val method = futureStub.getClass.getDeclaredMethod(javaMethodName, requestMessagePrototype.getClass)
+
+        val md = new Metadata()
+        headers.foreach { case (k, v) => md.put(Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER), v) }
+
+        (method, JavaGenericHelper.attachHeaders(futureStub, md))
+      }
+      .flatMap {
+        case (method, stub) =>
+          fromListenableFuture(F.delay {
+            method.invoke(stub, req).asInstanceOf[ListenableFuture[MessageOrBuilder]]
+          })
+      }
+  }
 
   private def getJavaMethodName(method: ServerMethodDefinition[_, _]): String = {
     val Seq(_, methodName) = method.getMethodDescriptor.getFullMethodName.split('/').toSeq
