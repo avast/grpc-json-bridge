@@ -10,6 +10,7 @@ This library allows to make a JSON encoded request to a gRPC service. It provide
 The API is _finally tagless_ (read more e.g. [here](https://www.beyondthelines.net/programming/introduction-to-tagless-final/)) meaning it can use whatever [`F[_]: cats.effect.Effect`](https://typelevel.org/cats-effect/typeclasses/effect.html) (e.g. `cats.effect.IO`, `monix.eval.Task`).
 
 ## Usage
+
 ```groovy
 compile 'com.avast.grpc:grpc-json-bridge-core_2.12:x.x.x'
 ```
@@ -17,6 +18,23 @@ compile 'com.avast.grpc:grpc-json-bridge-core_2.12:x.x.x'
 libraryDependencies += "com.avast.grpc" %% "grpc-json-bridge-core" % "x.x.x"
 ```
 
+```proto
+syntax = "proto3";
+package com.avast.grpc.jsonbridge.test;
+
+service TestService {
+    rpc Add (AddParams) returns (AddResponse) {}
+}
+
+message AddParams {
+    int32 a = 1;
+    int32 b = 2;
+}
+
+message AddResponse {
+    int32 sum = 1;
+}
+```
 ```scala
 import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge
 
