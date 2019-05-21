@@ -18,15 +18,15 @@ import scala.collection.JavaConverters._
 import scala.language.higherKinds
 import scala.util.control.NonFatal
 
-class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implicit val executor: Executor, val F: Async[F])
+class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implicit executor: Executor, F: Async[F])
     extends GrpcJsonBridge[F]
     with AutoCloseable
     with StrictLogging {
 
-  def this(grpcServer: io.grpc.Server)(implicit executor: Executor, F: Async[F]) =
-    this(grpcServer.getImmutableServices.asScala: _*)(executor, F)
+  def this(grpcServer: io.grpc.Server)(implicit executor: Executor, F: Async[F]) = this(grpcServer.getImmutableServices.asScala: _*)
 
-  protected def supportedMethod(d: ServerMethodDefinition[_, _]): Boolean = d.getMethodDescriptor.getType == MethodType.UNARY
+  protected def isSupportedMethod(d: ServerMethodDefinition[_, _]): Boolean = d.getMethodDescriptor.getType == MethodType.UNARY
+
   protected val parser: JsonFormat.Parser = JsonFormat.parser()
   protected val printer: JsonFormat.Printer = {
     JsonFormat.printer().includingDefaultValueFields().omittingInsignificantWhitespace()
@@ -54,12 +54,10 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
     inProcessServer.getImmutableServices.asScala.flatMap { ssd =>
       val newFutureStub = createNewFutureStubFunction(ssd)
       val methods = ssd.getMethods.asScala
-        .filter(supportedMethod)
+        .filter(isSupportedMethod)
         .map { m =>
-          val requestMarshaller = m.getMethodDescriptor.getRequestMarshaller.asInstanceOf[PrototypeMarshaller[_]]
-          val requestMessagePrototype = requestMarshaller.getMessagePrototype.asInstanceOf[Message]
-          val Seq(_, methodName) = m.getMethodDescriptor.getFullMethodName.split('/').toSeq
-          val javaMethodName = methodName.substring(0, 1).toLowerCase + methodName.substring(1)
+          val requestMessagePrototype = getRequestMessagePrototype(m)
+          val javaMethodName = getJavaMethodName(m)
           val stubMethod = newFutureStub().getClass.getDeclaredMethod(javaMethodName, requestMessagePrototype.getClass)
           val handler: HandlerFunc = (json, headers) =>
             fromListenableFuture(F.delay {
@@ -79,6 +77,16 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
         }
       methods
     }.toMap
+
+  private def getJavaMethodName(method: ServerMethodDefinition[_, _]): String = {
+    val Seq(_, methodName) = method.getMethodDescriptor.getFullMethodName.split('/').toSeq
+    methodName.substring(0, 1).toLowerCase + methodName.substring(1)
+  }
+
+  private def getRequestMessagePrototype(method: ServerMethodDefinition[_, _]): Message = {
+    val requestMarshaller = method.getMethodDescriptor.getRequestMarshaller.asInstanceOf[PrototypeMarshaller[_]]
+    requestMarshaller.getMessagePrototype.asInstanceOf[Message]
+  }
 
   private def parseRequest(json: String, requestMessage: Message): Either[Status, Message] =
     try {
