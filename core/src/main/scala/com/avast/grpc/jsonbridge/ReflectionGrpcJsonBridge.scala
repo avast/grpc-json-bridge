@@ -6,7 +6,6 @@ import java.util.concurrent.Executor
 import cats.effect.{Async, Sync}
 import cats.syntax.all._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
-import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge._
 import com.google.common.util.concurrent._
 import com.google.protobuf.util.JsonFormat
 import com.google.protobuf.{Message, MessageOrBuilder}
@@ -17,13 +16,15 @@ import io.grpc.inprocess.{InProcessChannelBuilder, InProcessServerBuilder}
 import io.grpc.stub.AbstractStub
 
 import scala.collection.JavaConverters._
-import scala.language.higherKinds
+import scala.language.{existentials, higherKinds}
 import scala.util.control.NonFatal
 
 class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implicit executor: Executor, F: Async[F])
     extends GrpcJsonBridge[F]
     with AutoCloseable
     with StrictLogging {
+
+  import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge._
 
   def this(grpcServer: io.grpc.Server)(implicit executor: Executor, F: Async[F]) = this(grpcServer.getImmutableServices.asScala: _*)
 
@@ -125,12 +126,12 @@ object ReflectionGrpcJsonBridge extends StrictLogging {
       futureStub <- createFutureStub
       method = futureStub.getClass.getDeclaredMethod(javaMethodName, requestMessagePrototype.getClass)
       stubWithHeaders = JavaGenericHelper.attachHeaders(futureStub, createMetadata())
-      resp <- executeRequest(stubWithHeaders, method, req)
+      resp <- executeRequest2(stubWithHeaders, method, req)
     } yield resp
   }
 
-  private def executeRequest[F[_]](stubWithHeaders: AbstractStub[_], method: Method, req: Message)(implicit executor: Executor,
-                                                                                                   F: Async[F]): F[MessageOrBuilder] = {
+  private def executeRequest2[F[_]](stubWithHeaders: AbstractStub[_], method: Method, req: Message)(implicit executor: Executor,
+                                                                                                    F: Async[F]): F[MessageOrBuilder] = {
     fromListenableFuture(F.delay {
       method.invoke(stubWithHeaders, req).asInstanceOf[ListenableFuture[MessageOrBuilder]]
     })
@@ -144,13 +145,12 @@ object ReflectionGrpcJsonBridge extends StrictLogging {
     }
   }
 
-  private def fromListenableFuture[F[_], T](flf: F[ListenableFuture[T]])(implicit executor: Executor, F: Async[F]): F[T] = flf.flatMap {
+  private def fromListenableFuture[F[_], A](flf: F[ListenableFuture[A]])(implicit executor: Executor, F: Async[F]): F[A] = flf.flatMap {
     lf =>
       F.async { cb =>
-        Futures.addCallback(lf, new FutureCallback[T] {
+        Futures.addCallback(lf, new FutureCallback[A] {
           def onFailure(t: Throwable): Unit = cb(Left(t))
-
-          def onSuccess(result: T): Unit = cb(Right(result))
+          def onSuccess(result: A): Unit = cb(Right(result))
         }, executor)
       }
   }
