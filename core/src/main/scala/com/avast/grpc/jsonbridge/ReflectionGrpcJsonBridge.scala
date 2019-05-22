@@ -3,7 +3,7 @@ package com.avast.grpc.jsonbridge
 import java.lang.reflect.Method
 import java.util.concurrent.Executor
 
-import cats.effect.{Async, Sync}
+import cats.effect.Async
 import cats.syntax.all._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import com.google.common.util.concurrent._
@@ -56,7 +56,14 @@ class ReflectionGrpcJsonBridge[F[_]](services: ServerServiceDefinition*)(implici
           val requestMessagePrototype = getRequestMessagePrototype(method)
           val javaMethodName = getJavaMethodName(method)
 
-          val execute = executeRequest(createNewFutureStubFunction(inProcessChannel, ssd), requestMessagePrototype, javaMethodName) _
+          val futureStubCtor = createFutureStubCtor(ssd, inProcessChannel)
+
+          val javaMethod: Method = {
+            val futureStub: AbstractStub[_] = futureStubCtor()
+            futureStub.getClass.getDeclaredMethod(javaMethodName, requestMessagePrototype.getClass)
+          }
+
+          val execute = executeRequest[F](futureStubCtor, javaMethod) _
 
           val handler: HandlerFunc = (json, headers) => {
             parseRequest(json, requestMessagePrototype) match {
@@ -106,15 +113,16 @@ object ReflectionGrpcJsonBridge extends StrictLogging {
     JsonFormat.printer().includingDefaultValueFields().omittingInsignificantWhitespace()
   }
 
-  private def createNewFutureStubFunction[F[_]](inProcessChannel: Channel, ssd: ServerServiceDefinition)(
-      implicit F: Sync[F]): F[AbstractStub[_]] = F.delay {
+  private def createFutureStubCtor(ssd: ServerServiceDefinition, inProcessChannel: Channel): () => AbstractStub[_] = {
     val method = getServiceGeneratedClass(ssd.getServiceDescriptor).getDeclaredMethod("newFutureStub", classOf[Channel])
-    method.invoke(null, inProcessChannel).asInstanceOf[AbstractStub[_]]
+
+    () =>
+      method.invoke(null, inProcessChannel).asInstanceOf[AbstractStub[_]]
   }
 
-  private def executeRequest[F[_]](createFutureStub: F[AbstractStub[_]], requestMessagePrototype: Message, javaMethodName: String)(
-      req: Message,
-      headers: Map[String, String])(implicit executor: Executor, F: Async[F]): F[MessageOrBuilder] = {
+  private def executeRequest[F[_]](futureStubCtor: () => AbstractStub[_], method: Method)(req: Message, headers: Map[String, String])(
+      implicit executor: Executor,
+      F: Async[F]): F[MessageOrBuilder] = {
 
     def createMetadata(): Metadata = {
       val md = new Metadata()
@@ -122,16 +130,13 @@ object ReflectionGrpcJsonBridge extends StrictLogging {
       md
     }
 
-    for {
-      futureStub <- createFutureStub
-      method = futureStub.getClass.getDeclaredMethod(javaMethodName, requestMessagePrototype.getClass)
-      stubWithHeaders = JavaGenericHelper.attachHeaders(futureStub, createMetadata())
-      resp <- executeRequest2(stubWithHeaders, method, req)
-    } yield resp
+    val stubWithHeaders = JavaGenericHelper.attachHeaders(futureStubCtor(), createMetadata())
+
+    executeRequest(stubWithHeaders, method, req)
   }
 
-  private def executeRequest2[F[_]](stubWithHeaders: AbstractStub[_], method: Method, req: Message)(implicit executor: Executor,
-                                                                                                    F: Async[F]): F[MessageOrBuilder] = {
+  private def executeRequest[F[_]](stubWithHeaders: AbstractStub[_], method: Method, req: Message)(implicit executor: Executor,
+                                                                                                   F: Async[F]): F[MessageOrBuilder] = {
     fromListenableFuture(F.delay {
       method.invoke(stubWithHeaders, req).asInstanceOf[ListenableFuture[MessageOrBuilder]]
     })
