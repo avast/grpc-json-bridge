@@ -1,7 +1,5 @@
 package com.avast.grpc.jsonbrige.http4s
 
-import java.util.concurrent.{Executor, Executors}
-
 import cats.data.NonEmptyList
 import cats.effect.IO
 import com.avast.grpc.jsonbridge._
@@ -10,11 +8,10 @@ import org.http4s.{Charset, Header, Headers, MediaType, Method, Request, Uri}
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.ScalaFutures
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
 
 class Http4sTest extends FunSuite with ScalaFutures {
-
-  implicit val executor: Executor = Executors.newSingleThreadExecutor()
 
   test("basic") {
     val service = Http4s(Configuration.Default)(new ReflectionGrpcJsonBridge[IO](TestServiceImpl.bindService()))
