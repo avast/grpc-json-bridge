@@ -1,12 +1,12 @@
 package com.avast.grpc.jsonbridge
 
-import java.util.concurrent.{ExecutorService, Executors}
-
 import cats.effect.IO
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import io.grpc.Status
 import io.grpc.inprocess.InProcessServerBuilder
 import org.scalatest.{fixture, Matchers, Outcome}
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class ReflectionGrpcJsonBridgeTest extends fixture.FlatSpec with Matchers {
 
@@ -15,7 +15,6 @@ class ReflectionGrpcJsonBridgeTest extends fixture.FlatSpec with Matchers {
   override protected def withFixture(test: OneArgTest): Outcome = {
     val channelName = InProcessServerBuilder.generateName
     val server = InProcessServerBuilder.forName(channelName).addService(new TestServiceImpl()).build
-    implicit val executor: ExecutorService = Executors.newSingleThreadExecutor()
     val bridge = new ReflectionGrpcJsonBridge[IO](server)
     try {
       test(FixtureParam(bridge))
