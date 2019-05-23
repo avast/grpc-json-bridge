@@ -3,7 +3,7 @@ import sbt.Keys.libraryDependencies
 
 val logger: Logger = ConsoleLogger()
 
-crossScalaVersions := Seq("2.12.7")
+crossScalaVersions := Seq("2.12.8")
 
 lazy val Versions = new {
   val gpb3Version = "3.7.1"
@@ -13,7 +13,7 @@ lazy val Versions = new {
 }
 
 lazy val scalaSettings = Seq(
-  scalaVersion := "2.12.7",
+  scalaVersion := "2.12.8",
   scalacOptions += "-deprecation",
   scalacOptions += "-unchecked",
   scalacOptions += "-feature"
@@ -22,15 +22,6 @@ lazy val scalaSettings = Seq(
 lazy val javaSettings = Seq(
   crossPaths := false,
   autoScalaLibrary := false
-)
-
-lazy val macroSettings = Seq(
-  addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full),
-  addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.7" cross CrossVersion.binary),
-  libraryDependencies ++= Seq(
-    "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-    "org.scala-lang" % "scala-compiler" % scalaVersion.value
-  )
 )
 
 lazy val commonSettings = Seq(
@@ -71,7 +62,7 @@ lazy val commonSettings = Seq(
 )
 
 lazy val grpcTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufConfigSettings) ++ Seq(
-  PB.protocVersion := "-v350",
+  PB.protocVersion := "-v371",
   grpcExePath := xsbti.api.SafeLazy.strict {
     val exe: File = (baseDirectory in Test).value / ".bin" / grpcExeFileName
     if (!exe.exists) {
@@ -103,7 +94,6 @@ lazy val root = (project in file("."))
 
 lazy val core = (project in file("core")).settings(
   commonSettings,
-  macroSettings,
   scalaSettings,
   grpcTestGenSettings,
   name := "grpc-json-bridge-core",
@@ -112,33 +102,30 @@ lazy val core = (project in file("core")).settings(
     "com.google.protobuf" % "protobuf-java-util" % Versions.gpb3Version,
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
-    "org.typelevel" %% "cats-core" % "1.5.0",
-    "io.monix" %% "monix" % "3.0.0-RC1",
+    "org.typelevel" %% "cats-core" % "1.6.0",
+    "org.typelevel" %% "cats-effect" % "1.3.0",
     "com.kailuowang" %% "mainecoon-core" % "0.6.4",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
     "org.slf4j" % "jul-to-slf4j" % "1.7.26",
     "org.slf4j" % "jcl-over-slf4j" % "1.7.26",
-    "io.grpc" % "grpc-services" % Versions.grpcVersion % "test",
-    "com.avast.cactus" %% "cactus-grpc-server" % "0.15.1" % "test"
+    "io.grpc" % "grpc-services" % Versions.grpcVersion % "test"
   )
 )
 
 lazy val http4s = (project in file("http4s")).settings(
   commonSettings,
-  macroSettings,
   scalaSettings,
   grpcTestGenSettings,
   name := "grpc-json-bridge-http4s",
   libraryDependencies ++= Seq(
-    "org.http4s" %% "http4s-dsl" % "0.18.23",
-    "org.http4s" %% "http4s-blaze-server" % "0.18.23"
+    "org.http4s" %% "http4s-dsl" % "0.20.0",
+    "org.http4s" %% "http4s-blaze-server" % "0.20.0"
   ),
   scalacOptions += "-Ypartial-unification"
 ).dependsOn(core)
 
 lazy val akkaHttp = (project in file("akka-http")).settings(
   commonSettings,
-  macroSettings,
   scalaSettings,
   grpcTestGenSettings,
   name := "grpc-json-bridge-akkahttp",
