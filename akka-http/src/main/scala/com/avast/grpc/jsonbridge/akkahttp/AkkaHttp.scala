@@ -6,12 +6,12 @@ import akka.http.scaladsl.model.headers.`Content-Type`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatcher, Route}
 import cats.data.NonEmptyList
-import cats.effect.Effect
+import cats.effect.{Async, ConcurrentEffect, Effect, IO}
 import com.avast.grpc.jsonbridge.GrpcJsonBridge
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import io.grpc.Status.Code
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.higherKinds
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
@@ -42,10 +42,9 @@ object AkkaHttp {
           req.header[`Content-Type`] match {
             case Some(`JsonContentType`) =>
               entity(as[String]) { json =>
-                val methodCall = bridge
-                  .invoke(GrpcMethodName(serviceName, methodName), json, mapHeaders(req.headers))
-                  .toIO
-                  .unsafeToFuture()
+                val methodCall = unsafeToFuture {
+                  bridge.invoke(GrpcMethodName(serviceName, methodName), json, mapHeaders(req.headers))
+                }
                 onComplete(methodCall) {
                   case Success(Right(r)) =>
                     respondWithHeader(JsonContentType) {
@@ -75,6 +74,15 @@ object AkkaHttp {
         complete(bridge.methodsNames.map(_.fullName).mkString("\n"))
       }
     }
+  }
+
+  private def unsafeToFuture[F[_]: Effect, A](f: F[A]): Future[A] = {
+    val io = IO.async { (cb: Either[Throwable, A] => Unit) =>
+      f.runAsync(r => IO(cb(r))).unsafeRunSync()
+    }
+    val p = Promise[A]
+    io.unsafeRunAsync(_.fold(p.failure, p.success))
+    p.future
   }
 
   private def mapHeaders(headers: Seq[HttpHeader]): Map[String, String] = headers.toList.map(h => (h.name(), h.value())).toMap

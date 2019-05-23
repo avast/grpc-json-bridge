@@ -11,13 +11,13 @@ import io.grpc.{Status => GrpcStatus}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.{`Content-Type`, `WWW-Authenticate`}
 import org.http4s.server.middleware.{CORS, CORSConfig}
-import org.http4s.{Challenge, Header, Headers, HttpRoutes, MediaType, Response}
+import org.http4s.{Challenge, Header, Headers, HttpService, MediaType, Response}
 
 import scala.language.higherKinds
 
 object Http4s extends StrictLogging {
 
-  def apply[F[_]: Sync](configuration: Configuration)(bridge: GrpcJsonBridge[F]): HttpRoutes[F] = {
+  def apply[F[_]: Sync](configuration: Configuration)(bridge: GrpcJsonBridge[F]): HttpService[F] = {
     implicit val h: Http4sDsl[F] = Http4sDsl[F]
     import h._
 
@@ -27,7 +27,7 @@ object Http4s extends StrictLogging {
 
     logger.info(s"Creating HTTP4S service proxying gRPC services: ${bridge.servicesNames.mkString("[", ", ", "]")}")
 
-    val http4sService = HttpRoutes.of[F] {
+    val http4sService = HttpService[F] {
       case _ @GET -> `pathPrefix` / serviceName if serviceName.nonEmpty =>
         NonEmptyList.fromList(bridge.methodsNames.filter(_.service == serviceName).toList) match {
           case None =>
@@ -46,28 +46,28 @@ object Http4s extends StrictLogging {
         headers.get(`Content-Type`.name) match {
           case Some(Header(_, contentTypeValue)) =>
             `Content-Type`.parse(contentTypeValue) match {
-              case Right(`Content-Type`(MediaType.application.json, _)) =>
+              case Right(`Content-Type`(MediaType.`application/json`, _)) =>
                 request
                   .as[String]
                   .flatMap { body =>
                     bridge.invoke(GrpcMethodName(serviceName, methodName), body, mapHeaders(request.headers))
                   }
                   .flatMap {
-                    case Right(resp) => Ok(resp, `Content-Type`(MediaType.application.json))
+                    case Right(resp) => Ok(resp, `Content-Type`(MediaType.`application/json`))
                     case Left(st) => mapStatus(st, configuration)
                   }
               case Right(c) =>
-                val message = s"Content-Type must be '${MediaType.application.json}', it is '$c'"
+                val message = s"Content-Type must be '${MediaType.`application/json`}', it is '$c'"
                 logger.debug(message)
                 BadRequest(message)
               case Left(e) =>
-                val message = s"Content-Type must be '${MediaType.application.json}', cannot parse '$contentTypeValue'"
+                val message = s"Content-Type must be '${MediaType.`application/json`}', cannot parse '$contentTypeValue'"
                 logger.debug(message, e)
                 BadRequest(message)
             }
 
           case None =>
-            val message = s"Content-Type must be '${MediaType.application.json}'"
+            val message = s"Content-Type must be '${MediaType.`application/json`}'"
             logger.debug(message)
             BadRequest(message)
         }

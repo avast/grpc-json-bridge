@@ -21,8 +21,9 @@ class Http4sTest extends FunSuite with ScalaFutures {
         Request[IO](
           method = Method.POST,
           uri = Uri.fromString("com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail())
-        ).withEntity(""" { "a": 1, "b": 2} """)
-          .withContentType(`Content-Type`(MediaType.application.json, Charset.`UTF-8`))
+        ).withBody(""" { "a": 1, "b": 2} """)
+          .unsafeRunSync()
+          .withContentType(`Content-Type`(MediaType.`application/json`, Charset.`UTF-8`))
       )
       .value
       .unsafeRunSync()
@@ -32,8 +33,8 @@ class Http4sTest extends FunSuite with ScalaFutures {
     assertResult("""{"sum":3}""")(response.as[String].unsafeRunSync())
 
     assertResult(
-      Headers.of(
-        `Content-Type`(MediaType.application.json),
+      Headers(
+        `Content-Type`(MediaType.`application/json`),
         `Content-Length`.fromLong(9).getOrElse(fail())
       ))(response.headers)
   }
@@ -44,8 +45,9 @@ class Http4sTest extends FunSuite with ScalaFutures {
     val Some(response) = service
       .apply(
         Request[IO](method = Method.POST, uri = Uri.fromString("/abc/def/com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()))
-          .withEntity(""" { "a": 1, "b": 2} """)
-          .withContentType(`Content-Type`(MediaType.application.json))
+          .withBody(""" { "a": 1, "b": 2} """)
+          .unsafeRunSync()
+          .withContentType(`Content-Type`(MediaType.`application/json`))
       )
       .value
       .unsafeRunSync()
@@ -55,8 +57,8 @@ class Http4sTest extends FunSuite with ScalaFutures {
     assertResult("""{"sum":3}""")(response.as[String].unsafeRunSync())
 
     assertResult(
-      Headers.of(
-        `Content-Type`(MediaType.application.json),
+      Headers(
+        `Content-Type`(MediaType.`application/json`),
         `Content-Length`.fromLong(9).getOrElse(fail())
       ))(response.headers)
   }
@@ -68,8 +70,9 @@ class Http4sTest extends FunSuite with ScalaFutures {
       val Some(response) = service
         .apply(
           Request[IO](method = Method.POST, uri = Uri.fromString("com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()))
-            .withEntity("")
-            .withContentType(`Content-Type`(MediaType.application.json))
+            .withBody("")
+            .unsafeRunSync()
+            .withContentType(`Content-Type`(MediaType.`application/json`))
         )
         .value
         .unsafeRunSync()
@@ -82,7 +85,8 @@ class Http4sTest extends FunSuite with ScalaFutures {
       val Some(response) = service
         .apply(
           Request[IO](method = Method.POST, uri = Uri.fromString("com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()))
-            .withEntity(""" { "a": 1, "b": 2} """)
+            .withBody(""" { "a": 1, "b": 2} """)
+            .unsafeRunSync()
         )
         .value
         .unsafeRunSync()
@@ -97,8 +101,9 @@ class Http4sTest extends FunSuite with ScalaFutures {
     val Some(response) = service
       .apply(
         Request[IO](method = Method.POST, uri = Uri.fromString("com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()))
-          .withEntity(""" { "a": 1, "b": 2} """)
-          .withContentType(`Content-Type`(MediaType.application.json))
+          .withBody(""" { "a": 1, "b": 2} """)
+          .unsafeRunSync()
+          .withContentType(`Content-Type`(MediaType.`application/json`))
       )
       .value
       .unsafeRunSync()
@@ -147,9 +152,10 @@ class Http4sTest extends FunSuite with ScalaFutures {
         Request[IO](
           method = Method.POST,
           uri = Uri.fromString("com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()),
-          headers = Headers.of(Header(TestServiceImpl.HeaderName, headerValue))
-        ).withEntity(""" { "a": 1, "b": 2} """)
-          .withContentType(`Content-Type`(MediaType.application.json))
+          headers = Headers(Header(TestServiceImpl.HeaderName, headerValue))
+        ).withBody(""" { "a": 1, "b": 2} """)
+          .unsafeRunSync()
+          .withContentType(`Content-Type`(MediaType.`application/json`))
       )
       .value
       .unsafeRunSync()

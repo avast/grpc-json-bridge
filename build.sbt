@@ -102,8 +102,8 @@ lazy val core = (project in file("core")).settings(
     "com.google.protobuf" % "protobuf-java-util" % Versions.gpb3Version,
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
-    "org.typelevel" %% "cats-core" % "1.6.0",
-    "org.typelevel" %% "cats-effect" % "1.3.0",
+    "org.typelevel" %% "cats-core" % "1.5.0",
+    "org.typelevel" %% "cats-effect" % "0.10.1",
     "com.kailuowang" %% "mainecoon-core" % "0.6.4",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
     "org.slf4j" % "jul-to-slf4j" % "1.7.26",
@@ -118,8 +118,8 @@ lazy val http4s = (project in file("http4s")).settings(
   grpcTestGenSettings,
   name := "grpc-json-bridge-http4s",
   libraryDependencies ++= Seq(
-    "org.http4s" %% "http4s-dsl" % "0.20.0",
-    "org.http4s" %% "http4s-blaze-server" % "0.20.0"
+    "org.http4s" %% "http4s-dsl" % "0.18.23",
+    "org.http4s" %% "http4s-blaze-server" % "0.18.23"
   ),
   scalacOptions += "-Ypartial-unification"
 ).dependsOn(core)
