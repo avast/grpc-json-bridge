@@ -23,7 +23,7 @@ import scala.util.control.NonFatal
 object ReflectionGrpcJsonBridge extends StrictLogging {
 
   // JSON body and headers to a response (fail status or JSON response)
-  private type HandlerFunc[F[_]] = (String, Map[String, String]) => F[Either[Status, String]]
+  type HandlerFunc[F[_]] = (String, Map[String, String]) => F[Either[Status, String]]
 
   private val parser: JsonFormat.Parser = JsonFormat.parser()
 
