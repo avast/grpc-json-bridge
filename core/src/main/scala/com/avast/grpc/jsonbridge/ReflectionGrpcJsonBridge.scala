@@ -37,8 +37,8 @@ object ReflectionGrpcJsonBridge extends StrictLogging {
 
   def createFromServices[F[_]](ec: ExecutionContext)(services: ServerServiceDefinition*)(
       implicit F: Async[F]): Resource[F, GrpcJsonBridge[F]] = {
-    val inProcessServiceName = s"HttpWrapper-${System.nanoTime()}"
     for {
+      inProcessServiceName <- Resource.liftF(F.delay { s"ReflectionGrpcJsonBridge-${System.nanoTime()}" })
       inProcessServer <- createInProcessServer(ec)(inProcessServiceName, services)
       inProcessChannel <- createInProcessChannel(ec)(inProcessServiceName)
       handlersPerMethod = inProcessServer.getImmutableServices.asScala
