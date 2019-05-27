@@ -40,12 +40,12 @@ import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge
 
 // for whole server
 val grpcServer: io.grpc.Server = ???
-val bridge = new ReflectionGrpcJsonBridge[Task](grpcServer)
+val bridge = ReflectionGrpcJsonBridge.createFromServer[Task](grpcServer)
 
 // or for selected services
 val s1: ServerServiceDefinition = ???
 val s2: ServerServiceDefinition = ???
-val anotherBridge = new ReflectionGrpcJsonBridge[Task](s1, s2)
+val anotherBridge = ReflectionGrpcJsonBridge.createFromServices[Task](s1, s2)
 
 // call a method manually, with a header specified
 val jsonResponse = bridge.invoke("com.avast.grpc.jsonbridge.test.TestService/Add", """ { "a": 1, "b": 2} """, Map("My-Header" -> "value"))

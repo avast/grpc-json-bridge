@@ -3,18 +3,28 @@ package com.avast.grpc.jsonbrige.http4s
 import cats.data.NonEmptyList
 import cats.effect.IO
 import com.avast.grpc.jsonbridge._
+import io.grpc.ServerServiceDefinition
 import org.http4s.headers.{`Content-Length`, `Content-Type`}
 import org.http4s.{Charset, Header, Headers, MediaType, Method, Request, Uri}
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.ScalaFutures
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
 
 class Http4sTest extends FunSuite with ScalaFutures {
 
+  val ec: ExecutionContext = implicitly[ExecutionContext]
+  def bridge(ssd: ServerServiceDefinition): GrpcJsonBridge[IO] =
+    ReflectionGrpcJsonBridge
+      .createFromServices[IO](ec)(ssd)
+      .allocated
+      .unsafeRunSync()
+      ._1
+
   test("basic") {
-    val service = Http4s(Configuration.Default)(new ReflectionGrpcJsonBridge[IO](TestServiceImpl.bindService()))
+    val service = Http4s(Configuration.Default)(bridge(TestServiceImpl.bindService()))
 
     val Some(response) = service
       .apply(
@@ -40,7 +50,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
 
   test("path prefix") {
     val configuration = Configuration.Default.copy(pathPrefix = Some(NonEmptyList.of("abc", "def")))
-    val service = Http4s(configuration)(new ReflectionGrpcJsonBridge[IO](TestServiceImpl.bindService()))
+    val service = Http4s(configuration)(bridge(TestServiceImpl.bindService()))
     val Some(response) = service
       .apply(
         Request[IO](method = Method.POST, uri = Uri.fromString("/abc/def/com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()))
@@ -62,7 +72,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
   }
 
   test("bad request after wrong request") {
-    val service = Http4s(Configuration.Default)(new ReflectionGrpcJsonBridge[IO](TestServiceImpl.bindService()))
+    val service = Http4s(Configuration.Default)(bridge(TestServiceImpl.bindService()))
 
     { // empty body
       val Some(response) = service
@@ -92,7 +102,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
   }
 
   test("propagate user-specified status") {
-    val service = Http4s(Configuration.Default)(new ReflectionGrpcJsonBridge[IO](PermissionDeniedTestServiceImpl.bindService()))
+    val service = Http4s(Configuration.Default)(bridge(PermissionDeniedTestServiceImpl.bindService()))
 
     val Some(response) = service
       .apply(
@@ -108,7 +118,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
   }
 
   test("provides service info") {
-    val service = Http4s(Configuration.Default)(new ReflectionGrpcJsonBridge[IO](TestServiceImpl.bindService()))
+    val service = Http4s(Configuration.Default)(bridge(TestServiceImpl.bindService()))
 
     val Some(response) = service
       .apply(
@@ -123,7 +133,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
   }
 
   test("provides services info") {
-    val service = Http4s(Configuration.Default)(new ReflectionGrpcJsonBridge[IO](TestServiceImpl.bindService()))
+    val service = Http4s(Configuration.Default)(bridge(TestServiceImpl.bindService()))
 
     val Some(response) = service
       .apply(
@@ -138,7 +148,7 @@ class Http4sTest extends FunSuite with ScalaFutures {
   }
 
   test("passes user headers") {
-    val service = Http4s(Configuration.Default)(new ReflectionGrpcJsonBridge[IO](TestServiceImpl.withInterceptor))
+    val service = Http4s(Configuration.Default)(bridge(TestServiceImpl.withInterceptor))
 
     val headerValue = Random.alphanumeric.take(10).mkString("")
 
