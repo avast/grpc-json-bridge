@@ -7,7 +7,7 @@ crossScalaVersions := Seq("2.12.8")
 
 lazy val Versions = new {
   val gpb3Version = "3.8.0"
-  val grpcVersion = "1.21.0"
+  val grpcVersion = "1.22.0"
 
   val akkaHttp = "10.1.5" // DO NOT upgrade to 10.1.[67] - will cause https://github.com/scala/community-builds/issues/825
 }
