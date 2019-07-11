@@ -103,9 +103,16 @@ object ReflectionGrpcJsonBridge extends StrictLogging {
     }
 
   private def createFutureStubCtor(sd: ServiceDescriptor, inProcessChannel: Channel): () => AbstractStub[_] = {
-    val serviceGeneratedClass = Class.forName {
-      if (sd.getName.startsWith("grpc.")) "io." + sd.getName + "Grpc" else sd.getName + "Grpc"
+    val serviceClassName = if (sd.getName.startsWith("grpc.")) {
+      "io." + sd.getName + "Grpc"
+    } else {
+      sd.getSchemaDescriptor.getClass.getName.split("\\$").head
     }
+
+    logger.debug(s"Creating instance of $serviceClassName")
+
+    val serviceGeneratedClass = Class.forName(serviceClassName)
+
     val method = serviceGeneratedClass.getDeclaredMethod("newFutureStub", classOf[Channel])
 
     () =>
