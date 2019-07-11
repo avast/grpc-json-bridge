@@ -5,19 +5,18 @@ import java.lang.reflect.Method
 import cats.effect._
 import cats.implicits._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
-import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
+import com.google.common.util.concurrent._
 import com.google.protobuf.util.JsonFormat
 import com.google.protobuf.{Message, MessageOrBuilder}
 import com.typesafe.scalalogging.StrictLogging
 import io.grpc.MethodDescriptor.{MethodType, PrototypeMarshaller}
-import io.grpc.inprocess.{InProcessChannelBuilder, InProcessServerBuilder}
 import io.grpc._
+import io.grpc.inprocess.{InProcessChannelBuilder, InProcessServerBuilder}
 import io.grpc.stub.AbstractStub
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
-import scala.language.existentials
-import scala.language.higherKinds
+import scala.language.{existentials, higherKinds}
 import scala.util.control.NonFatal
 
 object ReflectionGrpcJsonBridge extends StrictLogging {
@@ -103,11 +102,7 @@ object ReflectionGrpcJsonBridge extends StrictLogging {
     }
 
   private def createFutureStubCtor(sd: ServiceDescriptor, inProcessChannel: Channel): () => AbstractStub[_] = {
-    val serviceClassName = if (sd.getName.startsWith("grpc.")) {
-      "io." + sd.getName + "Grpc"
-    } else {
-      sd.getSchemaDescriptor.getClass.getName.split("\\$").head
-    }
+    val serviceClassName = sd.getSchemaDescriptor.getClass.getName.split("\\$").head
 
     logger.debug(s"Creating instance of $serviceClassName")
 
