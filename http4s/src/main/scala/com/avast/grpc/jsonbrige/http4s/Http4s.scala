@@ -103,6 +103,7 @@ object Http4s extends StrictLogging {
       case Code.RESOURCE_EXHAUSTED => TooManyRequests(description)
       case Code.ABORTED => InternalServerError(description)
       case Code.DATA_LOSS => InternalServerError(description)
+      case Code.ALREADY_EXISTS => Conflict(description)
 
       case Code.UNAUTHENTICATED => Unauthorized(configuration.wwwAuthenticate)
 
