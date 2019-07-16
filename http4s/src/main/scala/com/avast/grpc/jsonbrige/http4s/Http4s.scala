@@ -9,11 +9,13 @@ import com.typesafe.scalalogging.StrictLogging
 import io.grpc.Status.Code
 import io.grpc.{Status => GrpcStatus}
 import org.http4s.dsl.Http4sDsl
+import org.http4s.dsl.impl.EntityResponseGenerator
 import org.http4s.headers.{`Content-Type`, `WWW-Authenticate`}
 import org.http4s.server.middleware.{CORS, CORSConfig}
 import org.http4s.{Challenge, Header, Headers, HttpRoutes, MediaType, Response, Status}
 
 import scala.language.higherKinds
+import scala.language.implicitConversions
 
 object Http4s extends StrictLogging {
 
@@ -93,7 +95,7 @@ object Http4s extends StrictLogging {
     // https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
     s.getCode match {
       case Code.OK => Ok(description)
-      case Code.CANCELLED => Status(499)(description)
+      case Code.CANCELLED => ClientClosedRequestOps(ClientClosedRequest)(description)
       case Code.UNKNOWN => InternalServerError(description)
       case Code.INVALID_ARGUMENT => BadRequest(description)
       case Code.DEADLINE_EXCEEDED => GatewayTimeout(description)
@@ -111,6 +113,9 @@ object Http4s extends StrictLogging {
       case Code.UNAUTHENTICATED => Unauthorized(configuration.wwwAuthenticate)
     }
   }
+
+  val ClientClosedRequest = Status(499, "Client Closed Request")
+  final case class ClientClosedRequestOps[F[_], G[_]](status: ClientClosedRequest.type) extends AnyVal with EntityResponseGenerator[F, G]
 }
 
 case class Configuration(pathPrefix: Option[NonEmptyList[String]],
