@@ -1,5 +1,6 @@
 package com.avast.grpc.jsonbridge.akkahttp
 
+import akka.http.scaladsl.model.StatusCodes.ClientError
 import cats.effect.implicits._
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.`Content-Type`
@@ -79,22 +80,25 @@ object AkkaHttp {
 
   private def mapHeaders(headers: Seq[HttpHeader]): Map[String, String] = headers.toList.map(h => (h.name(), h.value())).toMap
 
+  // https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
   private def mapStatus(s: io.grpc.Status): StatusCode = s.getCode match {
-    case Code.NOT_FOUND => StatusCodes.NotFound
-    case Code.INTERNAL => StatusCodes.InternalServerError
+    case Code.OK => StatusCodes.OK
+    case Code.CANCELLED => ClientError(499)("Client Closed Request", "The operation was cancelled, typically by the caller.")
+    case Code.UNKNOWN => StatusCodes.InternalServerError
     case Code.INVALID_ARGUMENT => StatusCodes.BadRequest
-    case Code.FAILED_PRECONDITION => StatusCodes.BadRequest
-    case Code.CANCELLED => StatusCodes.RequestTimeout
-    case Code.UNAVAILABLE => StatusCodes.ServiceUnavailable
-    case Code.DEADLINE_EXCEEDED => StatusCodes.RequestTimeout
-    case Code.UNAUTHENTICATED => StatusCodes.Unauthorized
+    case Code.DEADLINE_EXCEEDED => StatusCodes.GatewayTimeout
+    case Code.NOT_FOUND => StatusCodes.NotFound
+    case Code.ALREADY_EXISTS => StatusCodes.Conflict
     case Code.PERMISSION_DENIED => StatusCodes.Forbidden
-    case Code.UNIMPLEMENTED => StatusCodes.NotImplemented
     case Code.RESOURCE_EXHAUSTED => StatusCodes.TooManyRequests
-    case Code.ABORTED => StatusCodes.InternalServerError
+    case Code.FAILED_PRECONDITION => StatusCodes.BadRequest
+    case Code.ABORTED => StatusCodes.Conflict
+    case Code.OUT_OF_RANGE => StatusCodes.BadRequest
+    case Code.UNIMPLEMENTED => StatusCodes.NotImplemented
+    case Code.INTERNAL => StatusCodes.InternalServerError
+    case Code.UNAVAILABLE => StatusCodes.ServiceUnavailable
     case Code.DATA_LOSS => StatusCodes.InternalServerError
-
-    case _ => StatusCodes.InternalServerError
+    case Code.UNAUTHENTICATED => StatusCodes.Unauthorized
   }
 }
 
