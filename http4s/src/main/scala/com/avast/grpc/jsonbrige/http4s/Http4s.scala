@@ -11,7 +11,7 @@ import io.grpc.{Status => GrpcStatus}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.{`Content-Type`, `WWW-Authenticate`}
 import org.http4s.server.middleware.{CORS, CORSConfig}
-import org.http4s.{Challenge, Header, Headers, HttpRoutes, MediaType, Response}
+import org.http4s.{Challenge, Header, Headers, HttpRoutes, MediaType, Response, Status}
 
 import scala.language.higherKinds
 
@@ -90,24 +90,25 @@ object Http4s extends StrictLogging {
       Option(s.getCause).flatMap(e => Option(e.getMessage))
     ).flatten.mkString(", ")
 
+    // https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
     s.getCode match {
-      case Code.NOT_FOUND => NotFound(description)
-      case Code.INTERNAL => InternalServerError(description)
+      case Code.OK => Ok(description)
+      case Code.CANCELLED => Status(499)(description)
+      case Code.UNKNOWN => InternalServerError(description)
       case Code.INVALID_ARGUMENT => BadRequest(description)
-      case Code.FAILED_PRECONDITION => BadRequest(description)
-      case Code.CANCELLED => RequestTimeout(description)
-      case Code.UNAVAILABLE => ServiceUnavailable(description)
-      case Code.DEADLINE_EXCEEDED => RequestTimeout(description)
-      case Code.PERMISSION_DENIED => Forbidden(description)
-      case Code.UNIMPLEMENTED => NotImplemented(description)
-      case Code.RESOURCE_EXHAUSTED => TooManyRequests(description)
-      case Code.ABORTED => InternalServerError(description)
-      case Code.DATA_LOSS => InternalServerError(description)
+      case Code.DEADLINE_EXCEEDED => GatewayTimeout(description)
+      case Code.NOT_FOUND => NotFound(description)
       case Code.ALREADY_EXISTS => Conflict(description)
-
+      case Code.PERMISSION_DENIED => Forbidden(description)
+      case Code.RESOURCE_EXHAUSTED => TooManyRequests(description)
+      case Code.FAILED_PRECONDITION => BadRequest(description)
+      case Code.ABORTED => Conflict(description)
+      case Code.OUT_OF_RANGE => BadRequest(description)
+      case Code.UNIMPLEMENTED => NotImplemented(description)
+      case Code.INTERNAL => InternalServerError(description)
+      case Code.UNAVAILABLE => ServiceUnavailable(description)
+      case Code.DATA_LOSS => InternalServerError(description)
       case Code.UNAUTHENTICATED => Unauthorized(configuration.wwwAuthenticate)
-
-      case _ => InternalServerError(description)
     }
   }
 }
