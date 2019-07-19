@@ -85,12 +85,16 @@ object Http4s extends StrictLogging {
 
   private def mapStatus[F[_]: Sync](s: GrpcStatus, configuration: Configuration)(implicit h: Http4sDsl[F]): F[Response[F]] = {
     import h._
+    import io.circe.generic.auto._
+    import org.http4s.circe.CirceEntityEncoder._
 
-    val description = List(
+    case class GrpcStatusJson(description: Option[String], exception: Option[String], message: Option[String])
+
+    val description = GrpcStatusJson(
       Option(s.getDescription),
       Option(s.getCause).flatMap(e => Option(e.getClass.getCanonicalName)),
       Option(s.getCause).flatMap(e => Option(e.getMessage))
-    ).flatten.mkString(", ")
+    )
 
     // https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
     s.getCode match {
