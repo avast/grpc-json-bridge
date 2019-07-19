@@ -8,7 +8,8 @@ crossScalaVersions := Seq("2.12.8")
 lazy val Versions = new {
   val gpb3Version = "3.8.0"
   val grpcVersion = "1.22.1"
-
+  val circeVersion = "0.11.1"
+  val http4sVersion = "0.20.6"
   val akkaHttp = "10.1.5" // DO NOT upgrade to 10.1.[67] - will cause https://github.com/scala/community-builds/issues/825
 }
 
@@ -119,8 +120,11 @@ lazy val http4s = (project in file("http4s")).settings(
   grpcTestGenSettings,
   name := "grpc-json-bridge-http4s",
   libraryDependencies ++= Seq(
-    "org.http4s" %% "http4s-dsl" % "0.20.0",
-    "org.http4s" %% "http4s-blaze-server" % "0.20.0"
+    "org.http4s" %% "http4s-dsl" % Versions.http4sVersion,
+    "org.http4s" %% "http4s-blaze-server" % Versions.http4sVersion,
+    "org.http4s" %% "http4s-circe" % Versions.http4sVersion,
+    "io.circe" %% "circe-core" % Versions.circeVersion,
+    "io.circe" %% "circe-generic" % Versions.circeVersion
   ),
   scalacOptions += "-Ypartial-unification"
 ).dependsOn(core)
@@ -132,6 +136,7 @@ lazy val akkaHttp = (project in file("akka-http")).settings(
   name := "grpc-json-bridge-akkahttp",
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-http" % Versions.akkaHttp,
+    "com.typesafe.akka" %% "akka-http-spray-json" % Versions.akkaHttp,
     "com.typesafe.akka" %% "akka-stream" % "2.5.21",
     "com.typesafe.akka" %% "akka-http-testkit" % Versions.akkaHttp % "test"
   ),

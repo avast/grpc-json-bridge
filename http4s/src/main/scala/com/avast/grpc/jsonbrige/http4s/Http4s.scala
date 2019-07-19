@@ -3,7 +3,7 @@ package com.avast.grpc.jsonbrige.http4s
 import cats.data.NonEmptyList
 import cats.effect._
 import cats.syntax.all._
-import com.avast.grpc.jsonbridge.GrpcJsonBridge
+import com.avast.grpc.jsonbridge.{GrpcJsonBridge, GrpcStatusJson}
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import com.typesafe.scalalogging.StrictLogging
 import io.grpc.Status.Code
@@ -85,12 +85,10 @@ object Http4s extends StrictLogging {
 
   private def mapStatus[F[_]: Sync](s: GrpcStatus, configuration: Configuration)(implicit h: Http4sDsl[F]): F[Response[F]] = {
     import h._
+    import io.circe.generic.auto._
+    import org.http4s.circe.CirceEntityEncoder._
 
-    val description = List(
-      Option(s.getDescription),
-      Option(s.getCause).flatMap(e => Option(e.getClass.getCanonicalName)),
-      Option(s.getCause).flatMap(e => Option(e.getMessage))
-    ).flatten.mkString(", ")
+    val description = GrpcStatusJson.fromGrpcStatus(s)
 
     // https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
     s.getCode match {
