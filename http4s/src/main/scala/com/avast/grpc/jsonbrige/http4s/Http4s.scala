@@ -93,7 +93,7 @@ object Http4s extends StrictLogging {
     // https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
     s.getCode match {
       case Code.OK => Ok(description)
-      case Code.CANCELLED => ClientClosedRequestOps(ClientClosedRequest)(description)
+      case Code.CANCELLED => ClientClosedRequest.apply(description)
       case Code.UNKNOWN => InternalServerError(description)
       case Code.INVALID_ARGUMENT => BadRequest(description)
       case Code.DEADLINE_EXCEEDED => GatewayTimeout(description)
@@ -113,7 +113,7 @@ object Http4s extends StrictLogging {
   }
 
   val ClientClosedRequest = Status(499, "Client Closed Request")
-  final case class ClientClosedRequestOps[F[_], G[_]](status: ClientClosedRequest.type) extends AnyVal with EntityResponseGenerator[F, G]
+  implicit class ClientClosedRequestOps[F[_], G[_]](val status: ClientClosedRequest.type) extends AnyVal with EntityResponseGenerator[F, G]
 }
 
 case class Configuration(pathPrefix: Option[NonEmptyList[String]],
