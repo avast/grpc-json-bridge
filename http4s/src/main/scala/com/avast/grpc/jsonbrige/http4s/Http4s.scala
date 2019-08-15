@@ -33,8 +33,8 @@ object Http4s extends StrictLogging {
       case _ @GET -> `pathPrefix` / serviceName if serviceName.nonEmpty =>
         NonEmptyList.fromList(bridge.methodsNames.filter(_.service == serviceName).toList) match {
           case None =>
-            val message = s"Attempt to GET non-existing service: $serviceName"
-            logger.debug(message)
+            val message = s"Service '$serviceName' not found"
+            logger.info(message)
             NotFound(message)
           case Some(methods) =>
             Ok { methods.map(_.fullName).toList.mkString("\n") }
@@ -52,25 +52,36 @@ object Http4s extends StrictLogging {
                 request
                   .as[String]
                   .flatMap { body =>
-                    bridge.invoke(GrpcMethodName(serviceName, methodName), body, mapHeaders(request.headers))
-                  }
-                  .flatMap {
-                    case Right(resp) => Ok(resp, `Content-Type`(MediaType.application.json))
-                    case Left(st) => mapStatus(st, configuration)
+                    val methodName0 = GrpcMethodName(serviceName, methodName)
+                    bridge.methodHandlers.get(methodName0) match {
+                      case Some(handler) =>
+                        val headers0 = mapHeaders(headers)
+                        handler(body, headers0)
+                          .flatMap {
+                            case Right(resp) =>
+                              Ok(resp, `Content-Type`(MediaType.application.json))
+                            case Left(status) =>
+                              mapStatus(status, configuration)
+                          }
+                      case None =>
+                        val message = s"Method '${methodName0.fullName}' not found"
+                        logger.info(message)
+                        NotFound(message)
+                    }
                   }
               case Right(c) =>
                 val message = s"Content-Type must be '${MediaType.application.json}', it is '$c'"
-                logger.debug(message)
+                logger.info(message)
                 BadRequest(message)
               case Left(e) =>
                 val message = s"Content-Type must be '${MediaType.application.json}', cannot parse '$contentTypeValue'"
-                logger.debug(message, e)
+                logger.info(message, e)
                 BadRequest(message)
             }
 
           case None =>
             val message = s"Content-Type must be '${MediaType.application.json}'"
-            logger.debug(message)
+            logger.info(message)
             BadRequest(message)
         }
     }

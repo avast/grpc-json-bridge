@@ -11,6 +11,7 @@ import cats.effect.Effect
 import cats.effect.implicits._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import com.avast.grpc.jsonbridge.{GrpcJsonBridge, GrpcStatusJson}
+import com.typesafe.scalalogging.StrictLogging
 import io.grpc.Status.Code
 import spray.json._
 
@@ -19,7 +20,7 @@ import scala.language.higherKinds
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
-object AkkaHttp extends SprayJsonSupport with DefaultJsonProtocol {
+object AkkaHttp extends SprayJsonSupport with DefaultJsonProtocol with StrictLogging {
 
   private implicit val grpcStatusJsonFormat: RootJsonFormat[GrpcStatusJson] = jsonFormat3(GrpcStatusJson.apply)
 
@@ -41,30 +42,44 @@ object AkkaHttp extends SprayJsonSupport with DefaultJsonProtocol {
       .map(_ / Segment / Segment)
       .getOrElse(Segment / Segment)
 
+    logger.info(s"Creating Akka HTTP service proxying gRPC services: ${bridge.servicesNames.mkString("[", ", ", "]")}")
+
     post {
       path(pathPattern) { (serviceName, methodName) =>
-        extractRequest { req =>
-          req.header[`Content-Type`] match {
+        extractRequest { request =>
+          val headers = request.headers
+          request.header[`Content-Type`] match {
             case Some(`JsonContentType`) =>
-              entity(as[String]) { json =>
-                val methodCall = bridge
-                  .invoke(GrpcMethodName(serviceName, methodName), json, mapHeaders(req.headers))
-                  .toIO
-                  .unsafeToFuture()
-                onComplete(methodCall) {
-                  case Success(Right(r)) =>
-                    respondWithHeader(JsonContentType) {
-                      complete(r)
+              entity(as[String]) { body =>
+                val methodName0 = GrpcMethodName(serviceName, methodName)
+                bridge.methodHandlers.get(methodName0) match {
+                  case Some(handler) =>
+                    val headers0 = mapHeaders(headers)
+                    val methodCall = handler(body, headers0).toIO.unsafeToFuture()
+                    onComplete(methodCall) {
+                      case Success(Right(r)) =>
+                        respondWithHeader(JsonContentType) {
+                          complete(r)
+                        }
+                      case Success(Left(status)) =>
+                        val (s, body) = mapStatus(status)
+                        complete(s, body)
+                      case Failure(NonFatal(_)) => complete(StatusCodes.InternalServerError)
                     }
-                  case Success(Left(status)) =>
-                    val (s, body) = mapStatus(status)
-                    complete(s, body)
-                  case Failure(NonFatal(_)) => complete(StatusCodes.InternalServerError)
+                  case None =>
+                    val message = s"Method '${methodName0.fullName}' not found"
+                    logger.info(message)
+                    complete(StatusCodes.NotFound, message)
                 }
               }
-
-            case _ =>
-              complete(StatusCodes.BadRequest, s"Content-Type must be '$JsonContentType'")
+            case Some(c) =>
+              val message = s"Content-Type must be '$JsonContentType', it is '$c'"
+              logger.info(message)
+              complete(StatusCodes.BadRequest, message)
+            case None =>
+              val message = s"Content-Type must be '$JsonContentType'"
+              logger.info(message)
+              complete(StatusCodes.BadRequest, message)
           }
         }
       }
@@ -72,7 +87,9 @@ object AkkaHttp extends SprayJsonSupport with DefaultJsonProtocol {
       path(Segment) { serviceName =>
         NonEmptyList.fromList(bridge.methodsNames.filter(_.service == serviceName).toList) match {
           case None =>
-            complete(StatusCodes.NotFound, s"Service '$serviceName' not found")
+            val message = s"Service '$serviceName' not found"
+            logger.info(message)
+            complete(StatusCodes.NotFound, message)
           case Some(methods) =>
             complete(methods.map(_.fullName).toList.mkString("\n"))
         }
