@@ -54,16 +54,16 @@ object Http4s extends LazyLogging {
                 request
                   .as[String]
                   .flatMap { body =>
-                    val methodName0 = GrpcMethodName(serviceName, methodName)
-                    val headers0 = mapHeaders(headers)
-                    bridge.invoke(methodName0, body, headers0).flatMap {
+                    val methodNameString = GrpcMethodName(serviceName, methodName)
+                    val headersString = mapHeaders(headers)
+                    bridge.invoke(methodNameString, body, headersString).flatMap {
                       case Right(resp) =>
                         logger.trace("Request successful: {}", resp.substring(0, 100))
                         Ok(resp, `Content-Type`(MediaType.application.json))
                       case Left(er) =>
                         er match {
                           case BridgeError.GrpcMethodNotFound =>
-                            val message = s"Method '${methodName0.fullName}' not found"
+                            val message = s"Method '${methodNameString.fullName}' not found"
                             logger.warn(message)
                             NotFound(BridgeErrorResponse.fromMessage(message))
                           case er: BridgeError.RequestJsonParseError =>

@@ -51,9 +51,9 @@ object AkkaHttp extends SprayJsonSupport with DefaultJsonProtocol with LazyLoggi
           request.header[`Content-Type`] match {
             case Some(`JsonContentType`) =>
               entity(as[String]) { body =>
-                val methodName0 = GrpcMethodName(serviceName, methodName)
-                val headers0 = mapHeaders(headers)
-                val methodCall = bridge.invoke(methodName0, body, headers0).toIO.unsafeToFuture()
+                val methodNameString = GrpcMethodName(serviceName, methodName)
+                val headersString = mapHeaders(headers)
+                val methodCall = bridge.invoke(methodNameString, body, headersString).toIO.unsafeToFuture()
                 onComplete(methodCall) {
                   case Success(result) =>
                     result match {
@@ -65,7 +65,7 @@ object AkkaHttp extends SprayJsonSupport with DefaultJsonProtocol with LazyLoggi
                       case Left(er) =>
                         er match {
                           case BridgeError.GrpcMethodNotFound =>
-                            val message = s"Method '${methodName0.fullName}' not found"
+                            val message = s"Method '${methodNameString.fullName}' not found"
                             logger.warn(message)
                             respondWithHeader(JsonContentType) {
                               complete(StatusCodes.NotFound, BridgeErrorResponse.fromMessage(message))
