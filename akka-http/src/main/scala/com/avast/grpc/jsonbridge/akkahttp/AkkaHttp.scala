@@ -66,13 +66,13 @@ object AkkaHttp extends SprayJsonSupport with DefaultJsonProtocol with LazyLoggi
                         er match {
                           case BridgeError.GrpcMethodNotFound =>
                             val message = s"Method '${methodNameString.fullName}' not found"
-                            logger.warn(message)
+                            logger.info(message)
                             respondWithHeader(JsonContentType) {
                               complete(StatusCodes.NotFound, BridgeErrorResponse.fromMessage(message))
                             }
                           case er: BridgeError.RequestJsonParseError =>
                             val message = "Cannot parse JSON request body"
-                            logger.warn(message, er.t)
+                            logger.info(message, er.t)
                             respondWithHeader(JsonContentType) {
                               complete(StatusCodes.BadRequest, BridgeErrorResponse.fromException(message, er.t))
                             }
@@ -85,7 +85,7 @@ object AkkaHttp extends SprayJsonSupport with DefaultJsonProtocol with LazyLoggi
                             }
                           case er: BridgeError.RequestError =>
                             val message = "Unknown request error"
-                            logger.info(message, er.t)
+                            logger.warn(message, er.t)
                             respondWithHeader(JsonContentType) {
                               complete(StatusCodes.InternalServerError, BridgeErrorResponse.fromException(message, er.t))
                             }

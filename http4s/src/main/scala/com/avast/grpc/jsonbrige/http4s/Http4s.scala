@@ -64,11 +64,11 @@ object Http4s extends LazyLogging {
                         er match {
                           case BridgeError.GrpcMethodNotFound =>
                             val message = s"Method '${methodNameString.fullName}' not found"
-                            logger.warn(message)
+                            logger.info(message)
                             NotFound(BridgeErrorResponse.fromMessage(message))
                           case er: BridgeError.RequestJsonParseError =>
                             val message = "Cannot parse JSON request body"
-                            logger.warn(message, er.t)
+                            logger.info(message, er.t)
                             BadRequest(BridgeErrorResponse.fromException(message, er.t))
                           case er: BridgeError.RequestErrorGrpc =>
                             val message = "gRPC request error" + Option(er.s.getDescription).map(": " + _).getOrElse("")
@@ -76,7 +76,7 @@ object Http4s extends LazyLogging {
                             mapStatus(er.s, configuration)
                           case er: BridgeError.RequestError =>
                             val message = "Unknown request error"
-                            logger.info(message, er.t)
+                            logger.warn(message, er.t)
                             InternalServerError(BridgeErrorResponse.fromException(message, er.t))
                         }
                     }
