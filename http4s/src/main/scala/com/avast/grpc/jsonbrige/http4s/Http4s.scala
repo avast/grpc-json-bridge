@@ -36,7 +36,7 @@ object Http4s extends LazyLogging {
         NonEmptyList.fromList(bridge.methodsNames.filter(_.service == serviceName).toList) match {
           case None =>
             val message = s"Service '$serviceName' not found"
-            logger.info(message)
+            logger.debug(message)
             NotFound(BridgeErrorResponse.fromMessage(message))
           case Some(methods) =>
             Ok { methods.map(_.fullName).toList.mkString("\n") }
@@ -64,15 +64,15 @@ object Http4s extends LazyLogging {
                         er match {
                           case BridgeError.GrpcMethodNotFound =>
                             val message = s"Method '${methodNameString.fullName}' not found"
-                            logger.info(message)
+                            logger.debug(message)
                             NotFound(BridgeErrorResponse.fromMessage(message))
                           case er: BridgeError.RequestJsonParseError =>
                             val message = "Cannot parse JSON request body"
-                            logger.info(message, er.t)
+                            logger.debug(message, er.t)
                             BadRequest(BridgeErrorResponse.fromException(message, er.t))
                           case er: BridgeError.RequestErrorGrpc =>
                             val message = "gRPC request error" + Option(er.s.getDescription).map(": " + _).getOrElse("")
-                            logger.debug(message, er.s.getCause)
+                            logger.trace(message, er.s.getCause)
                             mapStatus(er.s, configuration)
                           case er: BridgeError.RequestError =>
                             val message = "Unknown request error"
@@ -83,17 +83,17 @@ object Http4s extends LazyLogging {
                   }
               case Right(c) =>
                 val message = s"Content-Type must be '${MediaType.application.json}', it is '$c'"
-                logger.info(message)
+                logger.debug(message)
                 BadRequest(BridgeErrorResponse.fromMessage(message))
               case Left(e) =>
                 val message = s"Content-Type must be '${MediaType.application.json}', cannot parse '$contentTypeValue'"
-                logger.info(message, e)
+                logger.debug(message, e)
                 BadRequest(BridgeErrorResponse.fromException(message, e))
             }
 
           case None =>
             val message = s"Content-Type must be '${MediaType.application.json}'"
-            logger.info(message)
+            logger.debug(message)
             BadRequest(BridgeErrorResponse.fromMessage(message))
         }
     }
