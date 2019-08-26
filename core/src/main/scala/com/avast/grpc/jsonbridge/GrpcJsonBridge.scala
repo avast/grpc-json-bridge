@@ -1,12 +1,12 @@
 package com.avast.grpc.jsonbridge
 
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
-import io.grpc.Status
 
 import scala.language.higherKinds
 
 trait GrpcJsonBridge[F[_]] {
-  def invoke(methodName: GrpcMethodName, body: String, headers: Map[String, String]): F[Either[Status, String]]
+  def invoke(methodName: GrpcMethodName, body: String, headers: Map[String, String]): F[Either[BridgeError, String]]
+  def methodHandlers: Map[GrpcMethodName, (String, Map[String, String]) => F[Either[BridgeError.Narrow, String]]]
   def methodsNames: Seq[GrpcMethodName]
   def servicesNames: Seq[String]
 }

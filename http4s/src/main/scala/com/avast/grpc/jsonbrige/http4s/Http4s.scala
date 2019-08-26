@@ -1,23 +1,25 @@
 package com.avast.grpc.jsonbrige.http4s
 
+import cats.Applicative
 import cats.data.NonEmptyList
 import cats.effect._
 import cats.syntax.all._
-import com.avast.grpc.jsonbridge.{GrpcJsonBridge, GrpcStatusJson}
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
-import com.typesafe.scalalogging.StrictLogging
+import com.avast.grpc.jsonbridge.{BridgeError, BridgeErrorResponse, GrpcJsonBridge}
+import com.typesafe.scalalogging.{LazyLogging, StrictLogging}
+import io.circe.generic.auto._
 import io.grpc.Status.Code
 import io.grpc.{Status => GrpcStatus}
+import org.http4s.circe.jsonEncoderOf
 import org.http4s.dsl.Http4sDsl
 import org.http4s.dsl.impl.EntityResponseGenerator
 import org.http4s.headers.{`Content-Type`, `WWW-Authenticate`}
 import org.http4s.server.middleware.{CORS, CORSConfig}
-import org.http4s.{Challenge, Header, Headers, HttpRoutes, MediaType, Response, Status}
+import org.http4s.{Challenge, EntityEncoder, Header, Headers, HttpRoutes, MediaType, Response, Status}
 
-import scala.language.higherKinds
-import scala.language.implicitConversions
+import scala.language.{higherKinds, implicitConversions}
 
-object Http4s extends StrictLogging {
+object Http4s extends LazyLogging {
 
   def apply[F[_]: Sync](configuration: Configuration)(bridge: GrpcJsonBridge[F]): HttpRoutes[F] = {
     implicit val h: Http4sDsl[F] = Http4sDsl[F]
@@ -33,9 +35,9 @@ object Http4s extends StrictLogging {
       case _ @GET -> `pathPrefix` / serviceName if serviceName.nonEmpty =>
         NonEmptyList.fromList(bridge.methodsNames.filter(_.service == serviceName).toList) match {
           case None =>
-            val message = s"Attempt to GET non-existing service: $serviceName"
+            val message = s"Service '$serviceName' not found"
             logger.debug(message)
-            NotFound(message)
+            NotFound(BridgeErrorResponse.fromMessage(message))
           case Some(methods) =>
             Ok { methods.map(_.fullName).toList.mkString("\n") }
         }
@@ -52,26 +54,47 @@ object Http4s extends StrictLogging {
                 request
                   .as[String]
                   .flatMap { body =>
-                    bridge.invoke(GrpcMethodName(serviceName, methodName), body, mapHeaders(request.headers))
-                  }
-                  .flatMap {
-                    case Right(resp) => Ok(resp, `Content-Type`(MediaType.application.json))
-                    case Left(st) => mapStatus(st, configuration)
+                    val methodNameString = GrpcMethodName(serviceName, methodName)
+                    val headersString = mapHeaders(headers)
+                    bridge.invoke(methodNameString, body, headersString).flatMap {
+                      case Right(resp) =>
+                        logger.trace("Request successful: {}", resp.substring(0, 100))
+                        Ok(resp, `Content-Type`(MediaType.application.json))
+                      case Left(er) =>
+                        er match {
+                          case BridgeError.GrpcMethodNotFound =>
+                            val message = s"Method '${methodNameString.fullName}' not found"
+                            logger.debug(message)
+                            NotFound(BridgeErrorResponse.fromMessage(message))
+                          case er: BridgeError.RequestJsonParseError =>
+                            val message = "Cannot parse JSON request body"
+                            logger.debug(message, er.t)
+                            BadRequest(BridgeErrorResponse.fromException(message, er.t))
+                          case er: BridgeError.RequestErrorGrpc =>
+                            val message = "gRPC request error" + Option(er.s.getDescription).map(": " + _).getOrElse("")
+                            logger.trace(message, er.s.getCause)
+                            mapStatus(er.s, configuration)
+                          case er: BridgeError.RequestError =>
+                            val message = "Unknown request error"
+                            logger.warn(message, er.t)
+                            InternalServerError(BridgeErrorResponse.fromException(message, er.t))
+                        }
+                    }
                   }
               case Right(c) =>
                 val message = s"Content-Type must be '${MediaType.application.json}', it is '$c'"
                 logger.debug(message)
-                BadRequest(message)
+                BadRequest(BridgeErrorResponse.fromMessage(message))
               case Left(e) =>
                 val message = s"Content-Type must be '${MediaType.application.json}', cannot parse '$contentTypeValue'"
                 logger.debug(message, e)
-                BadRequest(message)
+                BadRequest(BridgeErrorResponse.fromException(message, e))
             }
 
           case None =>
             val message = s"Content-Type must be '${MediaType.application.json}'"
             logger.debug(message)
-            BadRequest(message)
+            BadRequest(BridgeErrorResponse.fromMessage(message))
         }
     }
 
@@ -85,10 +108,8 @@ object Http4s extends StrictLogging {
 
   private def mapStatus[F[_]: Sync](s: GrpcStatus, configuration: Configuration)(implicit h: Http4sDsl[F]): F[Response[F]] = {
     import h._
-    import io.circe.generic.auto._
-    import org.http4s.circe.CirceEntityEncoder._
 
-    val description = GrpcStatusJson.fromGrpcStatus(s)
+    val description = BridgeErrorResponse.fromGrpcStatus(s)
 
     // https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
     s.getCode match {
@@ -114,6 +135,9 @@ object Http4s extends StrictLogging {
 
   val ClientClosedRequest = Status(499, "Client Closed Request")
   final case class ClientClosedRequestOps[F[_], G[_]](status: ClientClosedRequest.type) extends AnyVal with EntityResponseGenerator[F, G]
+
+  private implicit def grpcStatusJsonEntityEncoder[F[_]: Applicative]: EntityEncoder[F, BridgeErrorResponse] =
+    jsonEncoderOf[F, BridgeErrorResponse]
 }
 
 case class Configuration(pathPrefix: Option[NonEmptyList[String]],

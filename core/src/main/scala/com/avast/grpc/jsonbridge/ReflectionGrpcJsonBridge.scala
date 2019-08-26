@@ -7,7 +7,7 @@ import cats.implicits._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import com.google.common.util.concurrent._
 import com.google.protobuf.util.JsonFormat
-import com.google.protobuf.{Message, MessageOrBuilder}
+import com.google.protobuf.{InvalidProtocolBufferException, Message, MessageOrBuilder}
 import com.typesafe.scalalogging.StrictLogging
 import io.grpc.MethodDescriptor.{MethodType, PrototypeMarshaller}
 import io.grpc._
@@ -22,7 +22,7 @@ import scala.util.control.NonFatal
 object ReflectionGrpcJsonBridge extends StrictLogging {
 
   // JSON body and headers to a response (fail status or JSON response)
-  type HandlerFunc[F[_]] = (String, Map[String, String]) => F[Either[Status, String]]
+  type HandlerFunc[F[+ _]] = (String, Map[String, String]) => F[Either[BridgeError.Narrow, String]]
 
   private val parser: JsonFormat.Parser = JsonFormat.parser()
 
@@ -30,11 +30,11 @@ object ReflectionGrpcJsonBridge extends StrictLogging {
     JsonFormat.printer().includingDefaultValueFields().omittingInsignificantWhitespace()
   }
 
-  def createFromServer[F[_]](ec: ExecutionContext)(grpcServer: io.grpc.Server)(implicit F: Async[F]): Resource[F, GrpcJsonBridge[F]] = {
+  def createFromServer[F[+ _]](ec: ExecutionContext)(grpcServer: io.grpc.Server)(implicit F: Async[F]): Resource[F, GrpcJsonBridge[F]] = {
     createFromServices(ec)(grpcServer.getImmutableServices.asScala: _*)
   }
 
-  def createFromServices[F[_]](ec: ExecutionContext)(services: ServerServiceDefinition*)(
+  def createFromServices[F[+ _]](ec: ExecutionContext)(services: ServerServiceDefinition*)(
       implicit F: Async[F]): Resource[F, GrpcJsonBridge[F]] = {
     for {
       inProcessServiceName <- Resource.liftF(F.delay { s"ReflectionGrpcJsonBridge-${System.nanoTime()}" })
@@ -47,58 +47,43 @@ object ReflectionGrpcJsonBridge extends StrictLogging {
     } yield bridge
   }
 
-  def createFromHandlers[F[_]](handlersPerMethod: Map[String, HandlerFunc[F]])(implicit F: Async[F]): GrpcJsonBridge[F] = {
+  def createFromHandlers[F[+ _]](handlersPerMethod: Map[GrpcMethodName, HandlerFunc[F]])(implicit F: Async[F]): GrpcJsonBridge[F] = {
     new GrpcJsonBridge[F] {
+
       override def invoke(methodName: GrpcJsonBridge.GrpcMethodName,
                           body: String,
-                          headers: Map[String, String]): F[Either[Status, String]] = handlersPerMethod.get(methodName.fullName) match {
-        case None => F.pure(Left(Status.NOT_FOUND.withDescription(s"Method '$methodName' not found")))
-        case Some(handler) =>
-          handler(body, headers)
-            .recover {
-              case NonFatal(ex) =>
-                val message = "Error while executing the request"
-                logger.info(message, ex)
-                ex match {
-                  case e: StatusException if e.getStatus.getCode == Status.Code.UNKNOWN =>
-                    Left(richStatus(Status.INTERNAL, message, e.getStatus.getCause))
-                  case e: StatusRuntimeException if e.getStatus.getCode == Status.Code.UNKNOWN =>
-                    Left(richStatus(Status.INTERNAL, message, e.getStatus.getCause))
-                  case e: StatusException =>
-                    Left(richStatus(e.getStatus, message, e.getStatus.getCause))
-                  case e: StatusRuntimeException =>
-                    Left(richStatus(e.getStatus, message, e.getStatus.getCause))
-                  case _ =>
-                    Left(richStatus(Status.INTERNAL, message, ex))
-                }
-            }
-      }
+                          headers: Map[String, String]): F[Either[BridgeError, String]] =
+        handlersPerMethod.get(methodName) match {
+          case Some(handler) => handler(body, headers)
+          case None => F.pure(Left(BridgeError.GrpcMethodNotFound))
+        }
 
-      override val methodsNames: Seq[GrpcJsonBridge.GrpcMethodName] = handlersPerMethod.keys.map(m => GrpcMethodName(m)).toSeq
+      override def methodHandlers: Map[GrpcMethodName, HandlerFunc[F]] =
+        handlersPerMethod
+
+      override val methodsNames: Seq[GrpcJsonBridge.GrpcMethodName] = handlersPerMethod.keys.toSeq
       override val servicesNames: Seq[String] = methodsNames.map(_.service).distinct
     }
   }
 
-  private def createInProcessServer[F[_]](ec: ExecutionContext)(inProcessServiceName: String, services: Seq[ServerServiceDefinition])(
+  private def createInProcessServer[F[+ _]](ec: ExecutionContext)(inProcessServiceName: String, services: Seq[ServerServiceDefinition])(
       implicit F: Sync[F]): Resource[F, Server] =
-    Resource.make {
+    Resource {
       F.delay {
         val b = InProcessServerBuilder.forName(inProcessServiceName).executor(ec.execute(_))
         services.foreach(b.addService)
-        b.build().start()
+        val s = b.build().start()
+        (s, F.delay { s.shutdown().awaitTermination() })
       }
-    } { s =>
-      F.delay { s.shutdown().awaitTermination() }
     }
 
-  private def createInProcessChannel[F[_]](ec: ExecutionContext)(inProcessServiceName: String)(
+  private def createInProcessChannel[F[+ _]](ec: ExecutionContext)(inProcessServiceName: String)(
       implicit F: Sync[F]): Resource[F, ManagedChannel] =
-    Resource.make {
+    Resource[F, ManagedChannel] {
       F.delay {
-        InProcessChannelBuilder.forName(inProcessServiceName).executor(ec.execute(_)).build()
+        val c = InProcessChannelBuilder.forName(inProcessServiceName).executor(ec.execute(_)).build()
+        (c, F.delay { c.shutdown() })
       }
-    } { c =>
-      F.delay { c.shutdown() }
     }
 
   private def createFutureStubCtor(sd: ServiceDescriptor, inProcessChannel: Channel): () => AbstractStub[_] = {
@@ -114,8 +99,8 @@ object ReflectionGrpcJsonBridge extends StrictLogging {
       method.invoke(null, inProcessChannel).asInstanceOf[AbstractStub[_]]
   }
 
-  private def createServiceHandlers[F[_]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
-      implicit F: Async[F]): Map[String, HandlerFunc[F]] = {
+  private def createServiceHandlers[F[+ _]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
+      implicit F: Async[F]): Map[GrpcMethodName, HandlerFunc[F]] = {
     val futureStubCtor = createFutureStubCtor(ssd.getServiceDescriptor, inProcessChannel)
     ssd.getMethods.asScala
       .filter(isSupportedMethod)
@@ -123,23 +108,41 @@ object ReflectionGrpcJsonBridge extends StrictLogging {
       .toMap
   }
 
-  private def createHandler[F[_]](ec: ExecutionContext)(futureStubCtor: () => AbstractStub[_])(method: ServerMethodDefinition[_, _])(
-      implicit F: Async[F]): (String, HandlerFunc[F]) = {
+  private def handler[F[+ _]](requestMessagePrototype: Message, execute: (Message, Map[String, String]) => F[MessageOrBuilder])(
+      implicit F: Async[F]): HandlerFunc[F] = { (json, headers) =>
+    {
+      parseRequest(json, requestMessagePrototype) match {
+        case Right(req) =>
+          execute(req, headers)
+            .map(printer.print)
+            .map(Right(_): Either[BridgeError.Narrow, String])
+            .recover {
+              case e: StatusException =>
+                Left(BridgeError.RequestErrorGrpc(e.getStatus))
+              case e: StatusRuntimeException =>
+                Left(BridgeError.RequestErrorGrpc(e.getStatus))
+              case NonFatal(ex) =>
+                Left(BridgeError.RequestError(ex))
+            }
+        case Left(ex) =>
+          F.pure {
+            Left(BridgeError.RequestJsonParseError(ex))
+          }
+      }
+    }
+  }
+
+  private def createHandler[F[+ _]](ec: ExecutionContext)(futureStubCtor: () => AbstractStub[_])(method: ServerMethodDefinition[_, _])(
+      implicit F: Async[F]): (GrpcMethodName, HandlerFunc[F]) = {
     val requestMessagePrototype = getRequestMessagePrototype(method)
     val javaMethod = futureStubCtor().getClass
       .getDeclaredMethod(getJavaMethodName(method), requestMessagePrototype.getClass)
-    val execute = executeRequest[F](ec)(futureStubCtor, javaMethod) _
-
-    val handler: HandlerFunc[F] = (json, headers) => {
-      parseRequest(json, requestMessagePrototype) match {
-        case Right(req) => execute(req, headers).map(resp => Right(printer.print(resp)))
-        case Left(status) => F.pure(Left(status))
-      }
-    }
-    (method.getMethodDescriptor.getFullMethodName, handler)
+    val grpcMethodName = GrpcMethodName(method.getMethodDescriptor.getFullMethodName)
+    val methodHandler = handler(requestMessagePrototype, executeRequest[F](ec)(futureStubCtor, javaMethod))
+    (grpcMethodName, methodHandler)
   }
 
-  private def executeRequest[F[_]](ec: ExecutionContext)(futureStubCtor: () => AbstractStub[_], method: Method)(
+  private def executeRequest[F[+ _]](ec: ExecutionContext)(futureStubCtor: () => AbstractStub[_], javaMethod: Method)(
       req: Message,
       headers: Map[String, String])(implicit F: Async[F]): F[MessageOrBuilder] = {
     val metaData = {
@@ -149,13 +152,13 @@ object ReflectionGrpcJsonBridge extends StrictLogging {
     }
     val stubWithHeaders = JavaGenericHelper.attachHeaders(futureStubCtor(), metaData)
     fromListenableFuture(ec)(F.delay {
-      method.invoke(stubWithHeaders, req).asInstanceOf[ListenableFuture[MessageOrBuilder]]
+      javaMethod.invoke(stubWithHeaders, req).asInstanceOf[ListenableFuture[MessageOrBuilder]]
     })
   }
 
   private def isSupportedMethod(d: ServerMethodDefinition[_, _]): Boolean = d.getMethodDescriptor.getType == MethodType.UNARY
 
-  private def fromListenableFuture[F[_], A](ec: ExecutionContext)(flf: F[ListenableFuture[A]])(implicit F: Async[F]): F[A] = flf.flatMap {
+  private def fromListenableFuture[F[+ _], A](ec: ExecutionContext)(flf: F[ListenableFuture[A]])(implicit F: Async[F]): F[A] = flf.flatMap {
     lf =>
       F.async { cb =>
         Futures.addCallback(lf, new FutureCallback[A] {
@@ -175,26 +178,10 @@ object ReflectionGrpcJsonBridge extends StrictLogging {
     requestMarshaller.getMessagePrototype.asInstanceOf[Message]
   }
 
-  private def richStatus(status: Status, description: String, cause: Throwable): Status = {
-    val d = Option(status.getDescription).getOrElse(description)
-    val c = Option(status.getCause).getOrElse(cause)
-    status.withDescription(d).withCause(c)
-  }
-
-  private def parseRequest(json: String, requestMessage: Message): Either[Status, Message] =
-    try {
+  private def parseRequest(json: String, requestMessage: Message): Either[InvalidProtocolBufferException, Message] =
+    Either.catchOnly[InvalidProtocolBufferException] {
       val requestBuilder = requestMessage.newBuilderForType()
       parser.merge(json, requestBuilder)
-      Right(requestBuilder.build())
-    } catch {
-      case NonFatal(ex) =>
-        val message = "Error while converting JSON to GPB"
-        logger.warn(message, ex)
-        ex match {
-          case e: StatusRuntimeException =>
-            Left(richStatus(e.getStatus, message, e.getStatus.getCause))
-          case _ =>
-            Left(richStatus(Status.INVALID_ARGUMENT, message, ex))
-        }
+      requestBuilder.build()
     }
 }
