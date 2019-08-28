@@ -103,6 +103,7 @@ lazy val core = (project in file("core")).settings(
     "io.grpc" % "grpc-core" % Versions.grpcVersion,
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
+    "com.thesamet.scalapb" %% "scalapb-json4s" % "0.9.3" % "provided",
     "org.typelevel" %% "cats-core" % "1.6.0",
     "org.typelevel" %% "cats-effect" % "1.3.0",
     "com.kailuowang" %% "mainecoon-core" % "0.6.4",
