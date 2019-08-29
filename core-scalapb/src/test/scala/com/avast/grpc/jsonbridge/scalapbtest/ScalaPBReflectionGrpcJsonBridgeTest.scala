@@ -10,7 +10,7 @@ import org.scalatest.{fixture, Matchers, Outcome}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class ReflectionGrpcJsonBridgeTest extends fixture.FlatSpec with Matchers {
+class ScalaPBReflectionGrpcJsonBridgeTest extends fixture.FlatSpec with Matchers {
 
   case class FixtureParam(bridge: GrpcJsonBridge[IO])
 
