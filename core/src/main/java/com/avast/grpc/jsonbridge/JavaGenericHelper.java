@@ -5,7 +5,7 @@ import io.grpc.stub.AbstractStub;
 import io.grpc.stub.MetadataUtils;
 
 @SuppressWarnings("unchecked")
-class JavaGenericHelper {
+public class JavaGenericHelper {
     private JavaGenericHelper() {
     }
 
