@@ -84,13 +84,20 @@ lazy val grpcTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufCon
   )
 )
 
+lazy val grpcScalaPBTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufConfigSettings) ++ Seq(
+  PB.protocVersion := "-v391",
+  PB.targets in Test := Seq(
+    PB.gens.java -> (sourceManaged in Test).value
+  )
+)
+
 lazy val root = (project in file("."))
   .settings(
     name := "grpc-json-bridge",
     publish := {},
     publishLocal := {}
   )
-  .aggregate(core, http4s, akkaHttp, coreScalaPBTest)
+  .aggregate(core, http4s, akkaHttp, coreScalaPB)
 
 lazy val core = (project in file("core")).settings(
   commonSettings,
@@ -103,8 +110,6 @@ lazy val core = (project in file("core")).settings(
     "io.grpc" % "grpc-core" % Versions.grpcVersion,
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
-    "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
-    "com.thesamet.scalapb" %% "scalapb-json4s" % "0.9.3",
     "org.typelevel" %% "cats-core" % "1.6.0",
     "org.typelevel" %% "cats-effect" % "1.3.0",
     "com.kailuowang" %% "mainecoon-core" % "0.6.4",
@@ -115,15 +120,14 @@ lazy val core = (project in file("core")).settings(
   )
 )
 
-lazy val coreScalaPBTest = (project in file("core-scalapb-test")).settings(
-  name := "grpc-json-bridge-core-scalapb-test",
-  resolvers += Resolver.jcenterRepo,
-  testOptions += Tests.Argument(TestFrameworks.JUnit),
-  PB.protocVersion := "-v391",
-  PB.targets in Compile := Seq(
-    scalapb.gen() -> (sourceManaged in Compile).value
-  ),
+lazy val coreScalaPB = (project in file("core-scalapb")).settings(
+  name := "grpc-json-bridge-core-scalapb",
+  commonSettings,
+  scalaSettings,
+  grpcScalaPBTestGenSettings,
   libraryDependencies ++= Seq(
+    "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
+    "com.thesamet.scalapb" %% "scalapb-json4s" % "0.9.3",
     "junit" % "junit" % "4.12" % "test",
     "org.scalatest" %% "scalatest" % "3.0.5" % "test",
     "com.novocode" % "junit-interface" % "0.10" % "test", // Required by sbt to execute JUnit tests

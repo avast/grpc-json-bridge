@@ -2,8 +2,9 @@ package com.avast.grpc.jsonbridge.scalapbtest
 
 import cats.effect.IO
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
+import com.avast.grpc.jsonbridge.scalapb.ScalaPBReflectionGrpcJsonBridge
 import com.avast.grpc.jsonbridge.scalapbtest.TestServices.TestServiceGrpc
-import com.avast.grpc.jsonbridge.{BridgeError, GrpcJsonBridge, ReflectionGrpcJsonBridge}
+import com.avast.grpc.jsonbridge.{BridgeError, GrpcJsonBridge}
 import io.grpc.inprocess.InProcessServerBuilder
 import org.scalatest.{fixture, Matchers, Outcome}
 
@@ -19,7 +20,7 @@ class ReflectionGrpcJsonBridgeTest extends fixture.FlatSpec with Matchers {
       .forName(channelName)
       .addService(TestServiceGrpc.bindService(new TestServiceImpl, global))
       .build
-    val (bridge, close) = ReflectionGrpcJsonBridge.createFromServer[IO](global)(server).allocated.unsafeRunSync()
+    val (bridge, close) = ScalaPBReflectionGrpcJsonBridge.createFromServer[IO](global)(server).allocated.unsafeRunSync()
     try {
       test(FixtureParam(bridge))
     } finally {

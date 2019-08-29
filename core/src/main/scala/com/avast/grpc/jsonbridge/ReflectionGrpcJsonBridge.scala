@@ -2,7 +2,9 @@ package com.avast.grpc.jsonbridge
 
 import cats.effect._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
+import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge.{HandlerFunc, ServiceHandlers}
 import com.typesafe.scalalogging.StrictLogging
+import io.grpc.MethodDescriptor.MethodType
 import io.grpc._
 import io.grpc.inprocess.{InProcessChannelBuilder, InProcessServerBuilder}
 
@@ -10,14 +12,19 @@ import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
 import scala.language.{existentials, higherKinds}
 
-object ReflectionGrpcJsonBridge extends StrictLogging {
-
+object ReflectionGrpcJsonBridge extends ReflectionGrpcJsonBridge(JavaServiceHandlers) {
   // JSON body and headers to a response (fail status or JSON response)
   type HandlerFunc[F[+ _]] = (String, Map[String, String]) => F[Either[BridgeError.Narrow, String]]
+
   trait ServiceHandlers {
     def createServiceHandlers[F[+ _]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
-        implicit F: Async[F]): Option[Map[GrpcMethodName, HandlerFunc[F]]]
+        implicit F: Async[F]): Map[GrpcMethodName, HandlerFunc[F]]
   }
+
+  def isSupportedMethod(d: ServerMethodDefinition[_, _]): Boolean = d.getMethodDescriptor.getType == MethodType.UNARY
+}
+
+private[jsonbridge] class ReflectionGrpcJsonBridge(serviceHandlers: ServiceHandlers) extends StrictLogging {
 
   def createFromServer[F[+ _]](ec: ExecutionContext)(grpcServer: io.grpc.Server)(implicit F: Async[F]): Resource[F, GrpcJsonBridge[F]] = {
     createFromServices(ec)(grpcServer.getImmutableServices.asScala: _*)
@@ -30,18 +37,11 @@ object ReflectionGrpcJsonBridge extends StrictLogging {
       inProcessServer <- createInProcessServer(ec)(inProcessServiceName, services)
       inProcessChannel <- createInProcessChannel(ec)(inProcessServiceName)
       handlersPerMethod = inProcessServer.getImmutableServices.asScala
-        .flatMap(createServiceHandlers(ec)(inProcessChannel)(_))
+        .flatMap(serviceHandlers.createServiceHandlers(ec)(inProcessChannel)(_))
         .toMap
       bridge = createFromHandlers(handlersPerMethod)
     } yield bridge
   }
-
-  def createServiceHandlers[F[+ _]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
-      implicit F: Async[F]): Map[GrpcMethodName, HandlerFunc[F]] =
-    Iterable(JavaServiceHandlers, ScalaPBServiceHandlers)
-      .map(h => h.createServiceHandlers(ec)(inProcessChannel)(ssd))
-      .collectFirst { case Some(r) => r }
-      .getOrElse(sys.error(s"Cannot create service handlers for standard Java gRPC nor ScalaPB"))
 
   def createFromHandlers[F[+ _]](handlersPerMethod: Map[GrpcMethodName, HandlerFunc[F]])(implicit F: Async[F]): GrpcJsonBridge[F] = {
     new GrpcJsonBridge[F] {

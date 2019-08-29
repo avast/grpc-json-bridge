@@ -1,10 +1,11 @@
-package com.avast.grpc.jsonbridge
+package com.avast.grpc.jsonbridge.scalapb
 
 import java.lang.reflect.{InvocationTargetException, Method}
 
 import cats.effect.Async
 import cats.implicits._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
+import com.avast.grpc.jsonbridge.{BridgeError, JavaGenericHelper, ReflectionGrpcJsonBridge}
 import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge.{HandlerFunc, ServiceHandlers}
 import com.fasterxml.jackson.core.JsonParseException
 import com.typesafe.scalalogging.StrictLogging
@@ -21,13 +22,12 @@ import scala.util.{Failure, Success, Try}
 
 private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with StrictLogging {
   def createServiceHandlers[F[+ _]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
-      implicit F: Async[F]): Option[Map[GrpcMethodName, HandlerFunc[F]]] = {
-    createFutureStubCtor(ssd.getServiceDescriptor, inProcessChannel).map(
-      futureStubCtor =>
-        ssd.getMethods.asScala
-          .filter(isSupportedMethod)
-          .map(createHandler(ec)(futureStubCtor)(_))
-          .toMap)
+      implicit F: Async[F]): Map[GrpcMethodName, HandlerFunc[F]] = {
+    val futureStubCtor = createFutureStubCtor(ssd.getServiceDescriptor, inProcessChannel)
+    ssd.getMethods.asScala
+      .filter(ReflectionGrpcJsonBridge.isSupportedMethod)
+      .map(createHandler(ec)(futureStubCtor)(_))
+      .toMap
   }
 
   private val printer = new scalapb.json4s.Printer().includingDefaultValueFields
@@ -43,21 +43,15 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
       case Success(m) => Right(m)
     }
 
-  private def createFutureStubCtor(sd: ServiceDescriptor, inProcessChannel: Channel): Option[() => AbstractStub[_]] =
-    Try {
-      val serviceCompanionClassName = getServiceCompanionClassName(sd)
-      logger.debug(s"Obtaining instance of $serviceCompanionClassName")
-      val serviceCompanionClass = Class.forName(serviceCompanionClassName)
-      val serviceCompanion = serviceCompanionClass.getDeclaredField("MODULE$").get(null)
-      val method = serviceCompanionClass.getDeclaredMethod("stub", classOf[Channel])
-      () =>
-        method.invoke(serviceCompanion, inProcessChannel).asInstanceOf[AbstractStub[_]]
-    } match {
-      case Failure(e) =>
-        logger.debug(s"Cannot create service handlers based on ScalaPB gRPC implementation.", e)
-        None
-      case Success(v) => Some(v)
-    }
+  private def createFutureStubCtor(sd: ServiceDescriptor, inProcessChannel: Channel): () => AbstractStub[_] = {
+    val serviceCompanionClassName = getServiceCompanionClassName(sd)
+    logger.debug(s"Obtaining instance of $serviceCompanionClassName")
+    val serviceCompanionClass = Class.forName(serviceCompanionClassName)
+    val serviceCompanion = serviceCompanionClass.getDeclaredField("MODULE$").get(null)
+    val method = serviceCompanionClass.getDeclaredMethod("stub", classOf[Channel])
+    () =>
+      method.invoke(serviceCompanion, inProcessChannel).asInstanceOf[AbstractStub[_]]
+  }
 
   private def getServiceCompanionClassName(sd: ServiceDescriptor): String = {
     val servicePackage = sd.getName.substring(0, sd.getName.lastIndexOf('.'))

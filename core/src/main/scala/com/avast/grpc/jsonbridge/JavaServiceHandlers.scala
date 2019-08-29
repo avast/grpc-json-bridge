@@ -3,6 +3,7 @@ package com.avast.grpc.jsonbridge
 import java.lang.reflect.Method
 
 import cats.effect.Async
+import cats.implicits._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge.{HandlerFunc, ServiceHandlers}
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
@@ -11,22 +12,11 @@ import com.google.protobuf.{InvalidProtocolBufferException, Message, MessageOrBu
 import com.typesafe.scalalogging.StrictLogging
 import io.grpc.MethodDescriptor.PrototypeMarshaller
 import io.grpc.stub.AbstractStub
-import io.grpc.{
-  Channel,
-  ManagedChannel,
-  Metadata,
-  ServerMethodDefinition,
-  ServerServiceDefinition,
-  ServiceDescriptor,
-  StatusException,
-  StatusRuntimeException
-}
-import cats.implicits._
+import io.grpc._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
 import scala.language.{existentials, higherKinds}
-import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
 private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with StrictLogging {
@@ -36,28 +26,21 @@ private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with Stri
   }
 
   def createServiceHandlers[F[+ _]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
-      implicit F: Async[F]): Option[Map[GrpcMethodName, HandlerFunc[F]]] = {
-    createFutureStubCtor(ssd.getServiceDescriptor, inProcessChannel).map(
-      futureStubCtor =>
-        ssd.getMethods.asScala
-          .filter(isSupportedMethod)
-          .map(createHandler(ec)(futureStubCtor)(_))
-          .toMap)
+      implicit F: Async[F]): Map[GrpcMethodName, HandlerFunc[F]] = {
+    val futureStubCtor = createFutureStubCtor(ssd.getServiceDescriptor, inProcessChannel)
+    ssd.getMethods.asScala
+      .filter(ReflectionGrpcJsonBridge.isSupportedMethod)
+      .map(createHandler(ec)(futureStubCtor)(_))
+      .toMap
   }
 
-  private def createFutureStubCtor(sd: ServiceDescriptor, inProcessChannel: Channel): Option[() => AbstractStub[_]] =
-    Try {
-      val serviceClassName = sd.getSchemaDescriptor.getClass.getName.split("\\$").head
-      logger.debug(s"Creating instance of $serviceClassName")
-      val method = Class.forName(serviceClassName).getDeclaredMethod("newFutureStub", classOf[Channel])
-      () =>
-        method.invoke(null, inProcessChannel).asInstanceOf[AbstractStub[_]]
-    } match {
-      case Failure(e) =>
-        logger.debug(s"Cannot create service handlers based on Java gRPC implementation.", e)
-        None
-      case Success(v) => Some(v)
-    }
+  private def createFutureStubCtor(sd: ServiceDescriptor, inProcessChannel: Channel): () => AbstractStub[_] = {
+    val serviceClassName = sd.getSchemaDescriptor.getClass.getName.split("\\$").head
+    logger.debug(s"Creating instance of $serviceClassName")
+    val method = Class.forName(serviceClassName).getDeclaredMethod("newFutureStub", classOf[Channel])
+    () =>
+      method.invoke(null, inProcessChannel).asInstanceOf[AbstractStub[_]]
+  }
 
   private def createHandler[F[+ _]](ec: ExecutionContext)(futureStubCtor: () => AbstractStub[_])(method: ServerMethodDefinition[_, _])(
       implicit F: Async[F]): (GrpcMethodName, HandlerFunc[F]) = {
