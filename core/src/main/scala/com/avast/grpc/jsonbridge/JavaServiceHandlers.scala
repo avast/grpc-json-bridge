@@ -4,7 +4,7 @@ import java.lang.reflect.Method
 
 import cats.effect.Async
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
-import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge.HandlerFunc
+import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge.{HandlerFunc, ServiceHandlers}
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
 import com.google.protobuf.util.JsonFormat
 import com.google.protobuf.{InvalidProtocolBufferException, Message, MessageOrBuilder}
@@ -21,36 +21,43 @@ import io.grpc.{
   StatusException,
   StatusRuntimeException
 }
-
 import cats.implicits._
+
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
 import scala.language.{existentials, higherKinds}
+import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
-private[jsonbridge] object JavaServiceHandlers extends StrictLogging {
+private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with StrictLogging {
   private val parser: JsonFormat.Parser = JsonFormat.parser()
   private val printer: JsonFormat.Printer = {
     JsonFormat.printer().includingDefaultValueFields().omittingInsignificantWhitespace()
   }
 
   def createServiceHandlers[F[+ _]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
-      implicit F: Async[F]): Map[GrpcMethodName, HandlerFunc[F]] = {
-    val futureStubCtor = createFutureStubCtor(ssd.getServiceDescriptor, inProcessChannel)
-    ssd.getMethods.asScala
-      .filter(isSupportedMethod)
-      .map(createHandler(ec)(futureStubCtor)(_))
-      .toMap
+      implicit F: Async[F]): Option[Map[GrpcMethodName, HandlerFunc[F]]] = {
+    createFutureStubCtor(ssd.getServiceDescriptor, inProcessChannel).map(
+      futureStubCtor =>
+        ssd.getMethods.asScala
+          .filter(isSupportedMethod)
+          .map(createHandler(ec)(futureStubCtor)(_))
+          .toMap)
   }
 
-  private def createFutureStubCtor(sd: ServiceDescriptor, inProcessChannel: Channel): () => AbstractStub[_] = {
-    val serviceClassName = sd.getSchemaDescriptor.getClass.getName.split("\\$").head
-    logger.debug(s"Creating instance of $serviceClassName")
-    val serviceGeneratedClass = Class.forName(serviceClassName)
-    val method = serviceGeneratedClass.getDeclaredMethod("newFutureStub", classOf[Channel])
-    () =>
-      method.invoke(null, inProcessChannel).asInstanceOf[AbstractStub[_]]
-  }
+  private def createFutureStubCtor(sd: ServiceDescriptor, inProcessChannel: Channel): Option[() => AbstractStub[_]] =
+    Try {
+      val serviceClassName = sd.getSchemaDescriptor.getClass.getName.split("\\$").head
+      logger.debug(s"Creating instance of $serviceClassName")
+      val method = Class.forName(serviceClassName).getDeclaredMethod("newFutureStub", classOf[Channel])
+      () =>
+        method.invoke(null, inProcessChannel).asInstanceOf[AbstractStub[_]]
+    } match {
+      case Failure(e) =>
+        logger.debug(s"Cannot create service handlers based on Java gRPC implementation.", e)
+        None
+      case Success(v) => Some(v)
+    }
 
   private def createHandler[F[+ _]](ec: ExecutionContext)(futureStubCtor: () => AbstractStub[_])(method: ServerMethodDefinition[_, _])(
       implicit F: Async[F]): (GrpcMethodName, HandlerFunc[F]) = {
@@ -58,7 +65,7 @@ private[jsonbridge] object JavaServiceHandlers extends StrictLogging {
     val javaMethod = futureStubCtor().getClass
       .getDeclaredMethod(getJavaMethodName(method), requestMessagePrototype.getClass)
     val grpcMethodName = GrpcMethodName(method.getMethodDescriptor.getFullMethodName)
-    val methodHandler = handler(requestMessagePrototype, executeRequest[F](ec)(futureStubCtor, javaMethod))
+    val methodHandler = coreHandler(requestMessagePrototype, executeRequest[F](ec)(futureStubCtor, javaMethod))
     (grpcMethodName, methodHandler)
   }
 
@@ -72,7 +79,7 @@ private[jsonbridge] object JavaServiceHandlers extends StrictLogging {
     methodName.substring(0, 1).toLowerCase + methodName.substring(1)
   }
 
-  private def handler[F[+ _]](requestMessagePrototype: Message, execute: (Message, Map[String, String]) => F[MessageOrBuilder])(
+  private def coreHandler[F[+ _]](requestMessagePrototype: Message, execute: (Message, Map[String, String]) => F[MessageOrBuilder])(
       implicit F: Async[F]): HandlerFunc[F] = { (json, headers) =>
     {
       parseRequest(json, requestMessagePrototype) match {

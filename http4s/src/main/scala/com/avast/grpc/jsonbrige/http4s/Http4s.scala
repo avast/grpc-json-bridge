@@ -6,7 +6,7 @@ import cats.effect._
 import cats.syntax.all._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import com.avast.grpc.jsonbridge.{BridgeError, BridgeErrorResponse, GrpcJsonBridge}
-import com.typesafe.scalalogging.{LazyLogging, StrictLogging}
+import com.typesafe.scalalogging.LazyLogging
 import io.circe.generic.auto._
 import io.grpc.Status.Code
 import io.grpc.{Status => GrpcStatus}
