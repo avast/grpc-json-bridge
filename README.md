@@ -51,6 +51,17 @@ val anotherBridge = ReflectionGrpcJsonBridge.createFromServices[Task](s1, s2)
 val jsonResponse = bridge.invoke("com.avast.grpc.jsonbridge.test.TestService/Add", """ { "a": 1, "b": 2} """, Map("My-Header" -> "value"))
 ```
 
+This usage suppose that the project uses standard gRPC Java class generation, using [protoc-gen-grpc-java](https://github.com/grpc/grpc-java/tree/master/compiler).
+
+If the project uses [ScalaPB](https://scalapb.github.io/grpc.html) to generate the classes then following dependency should used instead:
+```groovy
+compile 'com.avast.grpc:grpc-json-bridge-core-scalapb_2.12:x.x.x'
+```
+```scala
+libraryDependencies += "com.avast.grpc" %% "grpc-json-bridge-core-scalapb" % "x.x.x"
+```
+And `ScalaPBReflectionGrpcJsonBridge` class must be used to create a new bridge.
+
 ### http4s
 ```groovy
 compile 'com.avast.grpc:grpc-json-bridge-http4s_2.12:x.x.x'
