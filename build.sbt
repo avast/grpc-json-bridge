@@ -87,7 +87,7 @@ lazy val grpcTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufCon
 lazy val grpcScalaPBTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufConfigSettings) ++ Seq(
   PB.protocVersion := "-v391",
   PB.targets in Test := Seq(
-    PB.gens.java -> (sourceManaged in Test).value
+    scalapb.gen() -> (sourceManaged in Test).value
   )
 )
 
