@@ -3,7 +3,9 @@
 [![Build Status](https://travis-ci.org/avast/grpc-json-bridge.svg?branch=master)](https://travis-ci.org/avast/grpc-json-bridge)
 [![Download](https://api.bintray.com/packages/avast/maven/grpc-json-bridge/images/download.svg) ](https://bintray.com/avast/maven/grpc-json-bridge/_latestVersion)
 
-This library allows to make a JSON encoded request to a gRPC service. It provides an implementation-agnostic module for mapping to your favorite HTTP server (`core`) as well as few implementations for direct usage in some well-known HTTP servers.  
+This library allows to make a JSON encoded HTTP request to a gRPC service that is implemented in Java or Scala (using ScalaPB).
+
+It provides an implementation-agnostic module for mapping to your favorite HTTP server (`core`, `core-scalapb`) as well as few implementations for direct usage in some well-known HTTP servers.  
 
 [Standard GPB <-> JSON mapping](https://developers.google.com/protocol-buffers/docs/proto3#json) is used.
 
