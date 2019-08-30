@@ -1,4 +1,3 @@
-import sbt.CrossVersion
 import sbt.Keys.libraryDependencies
 
 val logger: Logger = ConsoleLogger()
@@ -63,7 +62,7 @@ lazy val commonSettings = Seq(
 )
 
 lazy val grpcTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufConfigSettings) ++ Seq(
-  PB.protocVersion := "-v371",
+  PB.protocVersion := "-v391",
   grpcExePath := xsbti.api.SafeLazy.strict {
     val exe: File = (baseDirectory in Test).value / ".bin" / grpcExeFileName
     if (!exe.exists) {
@@ -85,13 +84,20 @@ lazy val grpcTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufCon
   )
 )
 
+lazy val grpcScalaPBTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufConfigSettings) ++ Seq(
+  PB.protocVersion := "-v391",
+  PB.targets in Test := Seq(
+    scalapb.gen() -> (sourceManaged in Test).value
+  )
+)
+
 lazy val root = (project in file("."))
   .settings(
     name := "grpc-json-bridge",
     publish := {},
     publishLocal := {}
   )
-  .aggregate(core, http4s, akkaHttp)
+  .aggregate(core, http4s, akkaHttp, coreScalaPB)
 
 lazy val core = (project in file("core")).settings(
   commonSettings,
@@ -113,6 +119,21 @@ lazy val core = (project in file("core")).settings(
     "io.grpc" % "grpc-services" % Versions.grpcVersion % "test"
   )
 )
+
+lazy val coreScalaPB = (project in file("core-scalapb")).settings(
+  name := "grpc-json-bridge-core-scalapb",
+  commonSettings,
+  scalaSettings,
+  grpcScalaPBTestGenSettings,
+  libraryDependencies ++= Seq(
+    "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
+    "com.thesamet.scalapb" %% "scalapb-json4s" % "0.9.3",
+    "junit" % "junit" % "4.12" % "test",
+    "org.scalatest" %% "scalatest" % "3.0.5" % "test",
+    "com.novocode" % "junit-interface" % "0.10" % "test", // Required by sbt to execute JUnit tests
+    "ch.qos.logback" % "logback-classic" % "1.2.3" % "test",
+    "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf")
+).dependsOn(core)
 
 lazy val http4s = (project in file("http4s")).settings(
   commonSettings,
