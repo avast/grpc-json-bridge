@@ -132,6 +132,7 @@ lazy val coreScalaPB = (project in file("core-scalapb")).settings(
     "org.scalatest" %% "scalatest" % "3.0.5" % "test",
     "com.novocode" % "junit-interface" % "0.10" % "test", // Required by sbt to execute JUnit tests
     "ch.qos.logback" % "logback-classic" % "1.2.3" % "test",
+    "io.grpc" % "grpc-services" % Versions.grpcVersion % "test",
     "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf")
 ).dependsOn(core)
 

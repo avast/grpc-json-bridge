@@ -23,11 +23,16 @@ import scala.util.{Failure, Success, Try}
 private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with StrictLogging {
   def createServiceHandlers[F[+ _]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
       implicit F: Async[F]): Map[GrpcMethodName, HandlerFunc[F]] = {
-    val futureStubCtor = createFutureStubCtor(ssd.getServiceDescriptor, inProcessChannel)
-    ssd.getMethods.asScala
-      .filter(ReflectionGrpcJsonBridge.isSupportedMethod)
-      .map(createHandler(ec)(futureStubCtor)(_))
-      .toMap
+    if (ssd.getServiceDescriptor.getName == "grpc.reflection.v1alpha.ServerReflection") {
+      logger.debug("Reflection endpoint service cannot be bridged because its implementation is not ScalaPB-based")
+      Map.empty
+    } else {
+      val futureStubCtor = createFutureStubCtor(ssd.getServiceDescriptor, inProcessChannel)
+      ssd.getMethods.asScala
+        .filter(ReflectionGrpcJsonBridge.isSupportedMethod)
+        .map(createHandler(ec)(futureStubCtor)(_))
+        .toMap
+    }
   }
 
   private val printer = new scalapb.json4s.Printer().includingDefaultValueFields
