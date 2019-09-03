@@ -1,4 +1,4 @@
-package com.avast.grpc.jsonbrige.http4s
+package com.avast.grpc.jsonbridge.http4s
 
 import cats.data.NonEmptyList
 import cats.effect.IO

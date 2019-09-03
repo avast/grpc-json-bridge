@@ -1,4 +1,4 @@
-package com.avast.grpc.jsonbrige.http4s
+package com.avast.grpc.jsonbridge.http4s
 
 import java.util.concurrent.atomic.AtomicReference
 

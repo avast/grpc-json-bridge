@@ -73,7 +73,7 @@ libraryDependencies += "com.avast.grpc" %% "grpc-json-bridge-http4s" % "x.x.x"
 ```
 ```scala
 import com.avast.grpc.jsonbridge.GrpcJsonBridge
-import com.avast.grpc.jsonbrige.http4s.{Configuration, Http4s}
+import com.avast.grpc.jsonbridge.http4s.{Configuration, Http4s}
 import org.http4s.HttpService
 
 val bridge: GrpcJsonBridge[Task] = ???
