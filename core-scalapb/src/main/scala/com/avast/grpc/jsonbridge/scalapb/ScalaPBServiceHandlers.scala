@@ -49,16 +49,28 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
     }
 
   private def createFutureStubCtor(sd: ServiceDescriptor, inProcessChannel: Channel): () => AbstractStub[_] = {
-    val serviceCompanionClassName = getServiceCompanionClassName(sd)
-    logger.debug(s"Obtaining instance of $serviceCompanionClassName")
-    val serviceCompanionClass = Class.forName(serviceCompanionClassName)
+    val serviceCompanionClassNames = getPossibleServiceCompanionClassNames(sd)
+    val serviceCompanionClass = serviceCompanionClassNames
+      .map(cn => {
+        logger.debug(s"Obtaining class of $cn")
+        try Some(Class.forName(cn))
+        catch {
+          case e: ClassNotFoundException =>
+            logger.trace(s"Class $cn cannot be loaded", e)
+            None
+        }
+      })
+      .collectFirst {
+        case Some(c) => c
+      }
+      .getOrElse(sys.error(s"Classes cannot be loaded: ${serviceCompanionClassNames.mkString(", ")}"))
     val serviceCompanion = serviceCompanionClass.getDeclaredField("MODULE$").get(null)
     val method = serviceCompanionClass.getDeclaredMethod("stub", classOf[Channel])
     () =>
       method.invoke(serviceCompanion, inProcessChannel).asInstanceOf[AbstractStub[_]]
   }
 
-  private def getServiceCompanionClassName(sd: ServiceDescriptor): String = {
+  private def getPossibleServiceCompanionClassNames(sd: ServiceDescriptor): Seq[String] = {
     val servicePackage = sd.getName.substring(0, sd.getName.lastIndexOf('.'))
     val serviceName = sd.getName.substring(sd.getName.lastIndexOf('.') + 1)
     val fileNameWithoutExtension = sd.getSchemaDescriptor
@@ -66,7 +78,8 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
       .getFileDescriptor
       .getName
       .stripSuffix(".proto")
-    servicePackage + "." + fileNameWithoutExtension + "." + serviceName + "Grpc$"
+    // we must handle when `flatPackage` is set to `true` - then the filename is included
+    Seq(servicePackage + "." + fileNameWithoutExtension + "." + serviceName + "Grpc$", servicePackage + "." + serviceName + "Grpc$")
   }
 
   private def createHandler[F[+ _]](ec: ExecutionContext)(futureStubCtor: () => AbstractStub[_])(method: ServerMethodDefinition[_, _])(
