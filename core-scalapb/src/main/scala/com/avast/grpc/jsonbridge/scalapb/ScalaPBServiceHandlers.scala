@@ -10,8 +10,8 @@ import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge.{HandlerFunc, ServiceH
 import com.fasterxml.jackson.core.JsonParseException
 import com.typesafe.scalalogging.StrictLogging
 import io.grpc._
+import io.grpc.protobuf.ProtoFileDescriptorSupplier
 import io.grpc.stub.AbstractStub
-import scalapb.grpc.ConcreteProtoFileDescriptorSupplier
 import scalapb.{GeneratedMessage, GeneratedMessageCompanion}
 
 import scala.collection.JavaConverters._
@@ -57,7 +57,7 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
     val servicePackage = sd.getName.substring(0, sd.getName.lastIndexOf('.'))
     val serviceName = sd.getName.substring(sd.getName.lastIndexOf('.') + 1)
     val fileNameWithoutExtension = sd.getSchemaDescriptor
-      .asInstanceOf[ConcreteProtoFileDescriptorSupplier]
+      .asInstanceOf[ProtoFileDescriptorSupplier]
       .getFileDescriptor
       .getName
       .stripSuffix(".proto")
