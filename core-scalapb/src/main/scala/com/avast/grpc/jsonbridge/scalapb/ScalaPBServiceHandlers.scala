@@ -77,6 +77,8 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
       .asInstanceOf[ProtoFileDescriptorSupplier]
       .getFileDescriptor
       .getName
+      .split('/')
+      .last
       .stripSuffix(".proto")
     // we must handle when `flatPackage` is set to `true` - then the filename is included
     Seq(servicePackage + "." + fileNameWithoutExtension + "." + serviceName + "Grpc$", servicePackage + "." + serviceName + "Grpc$")
