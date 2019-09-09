@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package com.avast.grpc.jsonbridge.test;
+
+service TestService2 {
+    rpc Add2 (AddParams2) returns (AddResponse2) {}
+}
+
+message AddParams2 {
+    int32 a = 1;
+    int32 b = 2;
+}
+
+message AddResponse2 {
+    int32 sum = 1;
+}
