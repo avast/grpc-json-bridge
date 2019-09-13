@@ -41,10 +41,17 @@ class ReflectionGrpcJsonBridgeTest extends fixture.FlatSpec with Matchers {
     status shouldBe BridgeError.GrpcMethodNotFound
   }
 
+  it must "return BridgeError.Json for wrongly named field" in { f =>
+    val Left(status) = f.bridge
+      .invoke(GrpcMethodName("com.avast.grpc.jsonbridge.test.TestService/Add"), """ { "x": 1, "b": 2} """, Map.empty)
+      .unsafeRunSync()
+    status should matchPattern { case BridgeError.Json(_) => }
+  }
+
   it must "return expected status code for malformed JSON" in { f =>
     val Left(status) =
       f.bridge.invoke(GrpcMethodName("com.avast.grpc.jsonbridge.test.TestService/Add"), "{ble}", Map.empty).unsafeRunSync()
-    status should matchPattern { case BridgeError.RequestJsonParseError(_) => }
+    status should matchPattern { case BridgeError.Json(_) => }
   }
 
 }

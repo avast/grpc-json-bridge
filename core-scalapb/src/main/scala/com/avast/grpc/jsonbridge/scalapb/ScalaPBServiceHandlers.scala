@@ -5,20 +5,21 @@ import java.lang.reflect.{InvocationTargetException, Method}
 import cats.effect.Async
 import cats.implicits._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
-import com.avast.grpc.jsonbridge.{BridgeError, JavaGenericHelper, ReflectionGrpcJsonBridge}
 import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge.{HandlerFunc, ServiceHandlers}
-import com.fasterxml.jackson.core.JsonParseException
+import com.avast.grpc.jsonbridge.{BridgeError, JavaGenericHelper, ReflectionGrpcJsonBridge}
+import com.fasterxml.jackson.core.{JsonParseException, JsonProcessingException}
 import com.typesafe.scalalogging.StrictLogging
 import io.grpc._
 import io.grpc.protobuf.ProtoFileDescriptorSupplier
 import io.grpc.stub.AbstractStub
+import scalapb.json4s.JsonFormatException
 import scalapb.{GeneratedMessage, GeneratedMessageCompanion}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.{existentials, higherKinds}
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with StrictLogging {
   def createServiceHandlers[F[+ _]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
@@ -42,10 +43,11 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
     .find(_.getName == "fromJsonString")
     .getOrElse(sys.error(s"Method 'fromJsonString' not found on ${parser.getClass}"))
   private def parse(input: String, companion: GeneratedMessageCompanion[_]): Either[Throwable, GeneratedMessage] =
-    Try(parserMethod.invoke(parser, input, companion).asInstanceOf[GeneratedMessage]) match {
-      case Failure(ie: InvocationTargetException) => Left(ie.getCause)
-      case Failure(e) => Left(e)
-      case Success(m) => Right(m)
+    try {
+      Right(parserMethod.invoke(parser, input, companion).asInstanceOf[GeneratedMessage])
+    } catch {
+      case ie: InvocationTargetException => Left(ie.getCause)
+      case NonFatal(e) => Left(e)
     }
 
   private def createFutureStubCtor(sd: ServiceDescriptor, inProcessChannel: Channel): () => AbstractStub[_] = {
@@ -91,8 +93,9 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
     val scalaMethod = futureStubCtor().getClass.getDeclaredMethod(getScalaMethodName(method), requestClass)
     val handler: HandlerFunc[F] = (input: String, headers: Map[String, String]) =>
       parse(input, requestCompanion) match {
-        case Left(e: JsonParseException) => F.pure(Left(BridgeError.RequestJsonParseError(e)))
-        case Left(e) => F.pure(Left(BridgeError.RequestError(e)))
+        case Left(e: JsonProcessingException) => F.pure(Left(BridgeError.Json(e)))
+        case Left(e: JsonFormatException) => F.pure(Left(BridgeError.Json(e)))
+        case Left(e) => F.pure(Left(BridgeError.Unknown(e)))
         case Right(request) =>
           fromScalaFuture(ec) {
             F.delay {
@@ -121,11 +124,11 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
       .map(Right(_): Either[BridgeError.Narrow, String])
       .recover {
         case e: StatusException =>
-          Left(BridgeError.RequestErrorGrpc(e.getStatus))
+          Left(BridgeError.Grpc(e.getStatus))
         case e: StatusRuntimeException =>
-          Left(BridgeError.RequestErrorGrpc(e.getStatus))
+          Left(BridgeError.Grpc(e.getStatus))
         case NonFatal(ex) =>
-          Left(BridgeError.RequestError(ex))
+          Left(BridgeError.Unknown(ex))
       }
   }
 
@@ -145,7 +148,7 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
     F.async { cb =>
       sf.onComplete {
         case Success(r) => cb(Right(r))
-        case Failure(e) => cb(Left(BridgeError.RequestError(e)))
+        case Failure(e) => cb(Left(BridgeError.Unknown(e)))
       }(ec)
     }
   }
