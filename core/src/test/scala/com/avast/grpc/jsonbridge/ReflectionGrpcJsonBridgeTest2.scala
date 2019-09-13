@@ -44,7 +44,7 @@ class ReflectionGrpcJsonBridgeTest2 extends fixture.FlatSpec with Matchers {
   it must "return expected status code for malformed JSON" in { f =>
     val Left(status) =
       f.bridge.invoke(GrpcMethodName("com.avast.grpc.jsonbridge.test.TestService2/Add2"), "{ble}", Map.empty).unsafeRunSync()
-    status should matchPattern { case BridgeError.RequestJsonParseError(_) => }
+    status should matchPattern { case BridgeError.Json(_) => }
   }
 
 }

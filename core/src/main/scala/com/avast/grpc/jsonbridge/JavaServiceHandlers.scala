@@ -72,15 +72,15 @@ private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with Stri
             .map(Right(_): Either[BridgeError.Narrow, String])
             .recover {
               case e: StatusException =>
-                Left(BridgeError.RequestErrorGrpc(e.getStatus))
+                Left(BridgeError.Grpc(e.getStatus))
               case e: StatusRuntimeException =>
-                Left(BridgeError.RequestErrorGrpc(e.getStatus))
+                Left(BridgeError.Grpc(e.getStatus))
               case NonFatal(ex) =>
-                Left(BridgeError.RequestError(ex))
+                Left(BridgeError.Unknown(ex))
             }
         case Left(ex) =>
           F.pure {
-            Left(BridgeError.RequestJsonParseError(ex))
+            Left(BridgeError.Json(ex))
           }
       }
     }

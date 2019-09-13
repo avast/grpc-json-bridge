@@ -7,7 +7,7 @@ import com.avast.grpc.jsonbridge.scalapbtest.TestServices2.TestService2Grpc
 import com.avast.grpc.jsonbridge.{BridgeError, GrpcJsonBridge}
 import io.grpc.inprocess.InProcessServerBuilder
 import io.grpc.protobuf.services.ProtoReflectionService
-import org.scalatest.{Matchers, Outcome, fixture}
+import org.scalatest.{fixture, Matchers, Outcome}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -47,7 +47,7 @@ class ScalaPBReflectionGrpcJsonBridgeTest2 extends fixture.FlatSpec with Matcher
   it must "return expected status code for malformed JSON" in { f =>
     val Left(status) =
       f.bridge.invoke(GrpcMethodName("com.avast.grpc.jsonbridge.scalapbtest.TestService2/Add2"), "{ble}", Map.empty).unsafeRunSync()
-    status should matchPattern { case BridgeError.RequestJsonParseError(_) => }
+    status should matchPattern { case BridgeError.Json(_) => }
   }
 
 }
