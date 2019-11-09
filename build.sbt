@@ -2,18 +2,18 @@ import sbt.Keys.libraryDependencies
 
 val logger: Logger = ConsoleLogger()
 
-crossScalaVersions := Seq("2.12.8")
+crossScalaVersions := Seq("2.12.10")
 
 lazy val Versions = new {
-  val gpb3Version = "3.9.1"
-  val grpcVersion = "1.23.0"
+  val gpb3Version = "3.10.0"
+  val grpcVersion = "1.25.0"
   val circeVersion = "0.11.1"
   val http4sVersion = "0.20.6"
   val akkaHttp = "10.1.5" // DO NOT upgrade to 10.1.[67] - will cause https://github.com/scala/community-builds/issues/825
 }
 
 lazy val scalaSettings = Seq(
-  scalaVersion := "2.12.8",
+  scalaVersion := "2.12.10",
   scalacOptions += "-deprecation",
   scalacOptions += "-unchecked",
   scalacOptions += "-feature"
