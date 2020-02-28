@@ -2,13 +2,13 @@ import sbt.Keys.libraryDependencies
 
 val logger: Logger = ConsoleLogger()
 
-crossScalaVersions := Seq("2.12.10")
+crossScalaVersions := Seq("2.12.10", "2.13.1")
 
 lazy val Versions = new {
   val gpb3Version = "3.11.1"
-  val grpcVersion = "1.26.0"
-  val circeVersion = "0.11.2"
-  val http4sVersion = "0.20.15"
+  val grpcVersion = "1.27.0"
+  val circeVersion = "0.13.0"
+  val http4sVersion = "0.21.1"
   val akkaHttp = "10.1.5" // DO NOT upgrade to 10.1.[67] - will cause https://github.com/scala/community-builds/issues/825
 }
 
@@ -110,8 +110,8 @@ lazy val core = (project in file("core")).settings(
     "io.grpc" % "grpc-core" % Versions.grpcVersion,
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
-    "org.typelevel" %% "cats-core" % "1.6.0",
-    "org.typelevel" %% "cats-effect" % "1.3.0",
+    "org.typelevel" %% "cats-core" % "2.1.1",
+    "org.typelevel" %% "cats-effect" % "2.1.1",
     "com.kailuowang" %% "mainecoon-core" % "0.6.4",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
     "org.slf4j" % "jul-to-slf4j" % "1.7.26",
@@ -176,5 +176,5 @@ def grpcExeFileName: String = {
 }
 
 val grpcArtifactId = "protoc-gen-grpc-java"
-val grpcExeUrl = url(s"http://repo1.maven.org/maven2/io/grpc/$grpcArtifactId/${Versions.grpcVersion}/$grpcExeFileName")
+val grpcExeUrl = url(s"https://repo1.maven.org/maven2/io/grpc/$grpcArtifactId/${Versions.grpcVersion}/$grpcExeFileName")
 val grpcExePath = SettingKey[xsbti.api.Lazy[File]]("grpcExePath")
