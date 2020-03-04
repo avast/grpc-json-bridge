@@ -1,6 +1,7 @@
 package com.avast.grpc.jsonbridge
 
 import cats.effect._
+import cats.syntax.all._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge.{HandlerFunc, ServiceHandlers}
 import com.typesafe.scalalogging.StrictLogging
@@ -10,14 +11,14 @@ import io.grpc.inprocess.{InProcessChannelBuilder, InProcessServerBuilder}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
-import scala.language.{existentials, higherKinds}
+import scala.language.higherKinds
 
 object ReflectionGrpcJsonBridge extends ReflectionGrpcJsonBridge(JavaServiceHandlers) {
   // JSON body and headers to a response (fail status or JSON response)
-  type HandlerFunc[F[+ _]] = (String, Map[String, String]) => F[Either[BridgeError.Narrow, String]]
+  type HandlerFunc[F[_]] = (String, Map[String, String]) => F[Either[BridgeError.Narrow, String]]
 
   trait ServiceHandlers {
-    def createServiceHandlers[F[+ _]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
+    def createServiceHandlers[F[_]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
         implicit F: Async[F]): Map[GrpcMethodName, HandlerFunc[F]]
   }
 
@@ -26,11 +27,11 @@ object ReflectionGrpcJsonBridge extends ReflectionGrpcJsonBridge(JavaServiceHand
 
 private[jsonbridge] class ReflectionGrpcJsonBridge(serviceHandlers: ServiceHandlers) extends StrictLogging {
 
-  def createFromServer[F[+ _]](ec: ExecutionContext)(grpcServer: io.grpc.Server)(implicit F: Async[F]): Resource[F, GrpcJsonBridge[F]] = {
+  def createFromServer[F[_]](ec: ExecutionContext)(grpcServer: io.grpc.Server)(implicit F: Async[F]): Resource[F, GrpcJsonBridge[F]] = {
     createFromServices(ec)(grpcServer.getImmutableServices.asScala: _*)
   }
 
-  def createFromServices[F[+ _]](ec: ExecutionContext)(services: ServerServiceDefinition*)(
+  def createFromServices[F[_]](ec: ExecutionContext)(services: ServerServiceDefinition*)(
       implicit F: Async[F]): Resource[F, GrpcJsonBridge[F]] = {
     for {
       inProcessServiceName <- Resource.liftF(F.delay { s"ReflectionGrpcJsonBridge-${System.nanoTime()}" })
@@ -43,14 +44,14 @@ private[jsonbridge] class ReflectionGrpcJsonBridge(serviceHandlers: ServiceHandl
     } yield bridge
   }
 
-  def createFromHandlers[F[+ _]](handlersPerMethod: Map[GrpcMethodName, HandlerFunc[F]])(implicit F: Async[F]): GrpcJsonBridge[F] = {
+  def createFromHandlers[F[_]](handlersPerMethod: Map[GrpcMethodName, HandlerFunc[F]])(implicit F: Async[F]): GrpcJsonBridge[F] = {
     new GrpcJsonBridge[F] {
 
       override def invoke(methodName: GrpcJsonBridge.GrpcMethodName,
                           body: String,
                           headers: Map[String, String]): F[Either[BridgeError, String]] =
         handlersPerMethod.get(methodName) match {
-          case Some(handler) => handler(body, headers)
+          case Some(handler) => handler(body, headers).map(x => x: Either[BridgeError, String])
           case None => F.pure(Left(BridgeError.GrpcMethodNotFound))
         }
 
@@ -62,7 +63,7 @@ private[jsonbridge] class ReflectionGrpcJsonBridge(serviceHandlers: ServiceHandl
     }
   }
 
-  private def createInProcessServer[F[+ _]](ec: ExecutionContext)(inProcessServiceName: String, services: Seq[ServerServiceDefinition])(
+  private def createInProcessServer[F[_]](ec: ExecutionContext)(inProcessServiceName: String, services: Seq[ServerServiceDefinition])(
       implicit F: Sync[F]): Resource[F, Server] =
     Resource {
       F.delay {
@@ -73,12 +74,12 @@ private[jsonbridge] class ReflectionGrpcJsonBridge(serviceHandlers: ServiceHandl
       }
     }
 
-  private def createInProcessChannel[F[+ _]](ec: ExecutionContext)(inProcessServiceName: String)(
+  private def createInProcessChannel[F[_]](ec: ExecutionContext)(inProcessServiceName: String)(
       implicit F: Sync[F]): Resource[F, ManagedChannel] =
     Resource[F, ManagedChannel] {
       F.delay {
         val c = InProcessChannelBuilder.forName(inProcessServiceName).executor(ec.execute(_)).build()
-        (c, F.delay { c.shutdown() })
+        (c, F.delay { val _ = c.shutdown() })
       }
     }
 
