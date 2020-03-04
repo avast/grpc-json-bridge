@@ -1,9 +1,9 @@
 package com.avast.grpc.jsonbridge.http4s
 
-import cats.Applicative
 import cats.data.NonEmptyList
 import cats.effect._
 import cats.syntax.all._
+import cats._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import com.avast.grpc.jsonbridge.{BridgeError, BridgeErrorResponse, GrpcJsonBridge}
 import com.typesafe.scalalogging.LazyLogging
@@ -15,7 +15,7 @@ import org.http4s.dsl.Http4sDsl
 import org.http4s.dsl.impl.EntityResponseGenerator
 import org.http4s.headers.{`Content-Type`, `WWW-Authenticate`}
 import org.http4s.server.middleware.{CORS, CORSConfig}
-import org.http4s.{Challenge, EntityEncoder, Header, Headers, HttpRoutes, MediaType, Response, Status}
+import org.http4s._
 
 import scala.language.{higherKinds, implicitConversions}
 
@@ -108,6 +108,10 @@ object Http4s extends LazyLogging {
 
   private def mapStatus[F[_]: Sync](s: GrpcStatus, configuration: Configuration)(implicit h: Http4sDsl[F]): F[Response[F]] = {
     import h._
+    val ClientClosedRequest = Status(499, "Client Closed Request")
+    final case class ClientClosedRequestOps(status: ClientClosedRequest.type) extends EntityResponseGenerator[F, F] {
+      val liftG: F ~> F = h.liftG
+    }
 
     val description = BridgeErrorResponse.fromGrpcStatus(s)
 
@@ -132,9 +136,6 @@ object Http4s extends LazyLogging {
       case Code.UNAUTHENTICATED => Unauthorized(configuration.wwwAuthenticate)
     }
   }
-
-  val ClientClosedRequest = Status(499, "Client Closed Request")
-  final case class ClientClosedRequestOps[F[_], G[_]](status: ClientClosedRequest.type) extends AnyVal with EntityResponseGenerator[F, G]
 
   private implicit def grpcStatusJsonEntityEncoder[F[_]: Applicative]: EntityEncoder[F, BridgeErrorResponse] =
     jsonEncoderOf[F, BridgeErrorResponse]
