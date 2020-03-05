@@ -176,5 +176,5 @@ def grpcExeFileName: String = {
 }
 
 val grpcArtifactId = "protoc-gen-grpc-java"
-val grpcExeUrl = url(s"http://repo1.maven.org/maven2/io/grpc/$grpcArtifactId/${Versions.grpcVersion}/$grpcExeFileName")
+val grpcExeUrl = url(s"https://repo1.maven.org/maven2/io/grpc/$grpcArtifactId/${Versions.grpcVersion}/$grpcExeFileName")
 val grpcExePath = SettingKey[xsbti.api.Lazy[File]]("grpcExePath")
