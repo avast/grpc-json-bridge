@@ -4,6 +4,7 @@ import cats.effect.IO
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import io.grpc.inprocess.InProcessServerBuilder
 import io.grpc.protobuf.services.ProtoReflectionService
+import io.grpc.services.HealthStatusManager
 import org.scalatest.{fixture, Matchers, Outcome}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -18,6 +19,7 @@ class ReflectionGrpcJsonBridgeTest extends fixture.FlatSpec with Matchers {
       .forName(channelName)
       .addService(new TestServiceImpl())
       .addService(ProtoReflectionService.newInstance())
+      .addService(new HealthStatusManager().getHealthService)
       .build
     val (bridge, close) = ReflectionGrpcJsonBridge.createFromServer[IO](global)(server).allocated.unsafeRunSync()
     try {

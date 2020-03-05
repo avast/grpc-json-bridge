@@ -24,8 +24,8 @@ import scala.util.{Failure, Success}
 private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with StrictLogging {
   def createServiceHandlers[F[_]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
       implicit F: Async[F]): Map[GrpcMethodName, HandlerFunc[F]] = {
-    if (ssd.getServiceDescriptor.getName == "grpc.reflection.v1alpha.ServerReflection") {
-      logger.debug("Reflection endpoint service cannot be bridged because its implementation is not ScalaPB-based")
+    if (ssd.getServiceDescriptor.getName.startsWith("grpc.reflection.") || ssd.getServiceDescriptor.getName.startsWith("grpc.health.")) {
+      logger.debug("Reflection and health endpoint service cannot be bridged because its implementation is not ScalaPB-based")
       Map.empty
     } else {
       val futureStubCtor = createFutureStubCtor(ssd.getServiceDescriptor, inProcessChannel)
