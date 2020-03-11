@@ -54,7 +54,7 @@ lazy val commonSettings = Seq(
   resolvers += Resolver.jcenterRepo,
   libraryDependencies ++= Seq(
     "junit" % "junit" % "4.12" % "test",
-    "org.scalatest" %% "scalatest" % "3.0.5" % "test",
+    "org.scalatest" %% "scalatest" % "3.0.8" % "test",
     "com.novocode" % "junit-interface" % "0.10" % "test", // Required by sbt to execute JUnit tests
     "ch.qos.logback" % "logback-classic" % "1.2.3" % "test"
   ),
