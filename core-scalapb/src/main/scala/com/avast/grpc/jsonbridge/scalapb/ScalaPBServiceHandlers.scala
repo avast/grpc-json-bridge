@@ -7,7 +7,7 @@ import cats.implicits._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge.{HandlerFunc, ServiceHandlers}
 import com.avast.grpc.jsonbridge.{BridgeError, JavaGenericHelper, ReflectionGrpcJsonBridge}
-import com.fasterxml.jackson.core.{JsonParseException, JsonProcessingException}
+import com.fasterxml.jackson.core.JsonProcessingException
 import com.typesafe.scalalogging.StrictLogging
 import io.grpc._
 import io.grpc.protobuf.ProtoFileDescriptorSupplier
@@ -22,10 +22,10 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with StrictLogging {
-  def createServiceHandlers[F[+ _]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
+  def createServiceHandlers[F[_]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
       implicit F: Async[F]): Map[GrpcMethodName, HandlerFunc[F]] = {
-    if (ssd.getServiceDescriptor.getName == "grpc.reflection.v1alpha.ServerReflection") {
-      logger.debug("Reflection endpoint service cannot be bridged because its implementation is not ScalaPB-based")
+    if (ssd.getServiceDescriptor.getName.startsWith("grpc.reflection.") || ssd.getServiceDescriptor.getName.startsWith("grpc.health.")) {
+      logger.debug("Reflection and health endpoint service cannot be bridged because its implementation is not ScalaPB-based")
       Map.empty
     } else {
       val futureStubCtor = createFutureStubCtor(ssd.getServiceDescriptor, inProcessChannel)
@@ -86,7 +86,7 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
     Seq(servicePackage + "." + fileNameWithoutExtension + "." + serviceName + "Grpc$", servicePackage + "." + serviceName + "Grpc$")
   }
 
-  private def createHandler[F[+ _]](ec: ExecutionContext)(futureStubCtor: () => AbstractStub[_])(method: ServerMethodDefinition[_, _])(
+  private def createHandler[F[_]](ec: ExecutionContext)(futureStubCtor: () => AbstractStub[_])(method: ServerMethodDefinition[_, _])(
       implicit F: Async[F]): (GrpcMethodName, HandlerFunc[F]) = {
     val requestCompanion = getRequestCompanion(method)
     val requestClass = Class.forName(requestCompanion.getClass.getName.stripSuffix("$"))
@@ -144,7 +144,7 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
     companionField.get(requestMarshaller).asInstanceOf[GeneratedMessageCompanion[_]]
   }
 
-  private def fromScalaFuture[F[+ _], A](ec: ExecutionContext)(fsf: F[Future[A]])(implicit F: Async[F]): F[A] = fsf.flatMap { sf =>
+  private def fromScalaFuture[F[_], A](ec: ExecutionContext)(fsf: F[Future[A]])(implicit F: Async[F]): F[A] = fsf.flatMap { sf =>
     F.async { cb =>
       sf.onComplete {
         case Success(r) => cb(Right(r))

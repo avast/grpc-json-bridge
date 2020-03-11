@@ -25,7 +25,7 @@ private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with Stri
     JsonFormat.printer().includingDefaultValueFields().omittingInsignificantWhitespace()
   }
 
-  def createServiceHandlers[F[+ _]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
+  def createServiceHandlers[F[_]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
       implicit F: Async[F]): Map[GrpcMethodName, HandlerFunc[F]] = {
     val futureStubCtor = createFutureStubCtor(ssd.getServiceDescriptor, inProcessChannel)
     ssd.getMethods.asScala
@@ -42,7 +42,7 @@ private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with Stri
       method.invoke(null, inProcessChannel).asInstanceOf[AbstractStub[_]]
   }
 
-  private def createHandler[F[+ _]](ec: ExecutionContext)(futureStubCtor: () => AbstractStub[_])(method: ServerMethodDefinition[_, _])(
+  private def createHandler[F[_]](ec: ExecutionContext)(futureStubCtor: () => AbstractStub[_])(method: ServerMethodDefinition[_, _])(
       implicit F: Async[F]): (GrpcMethodName, HandlerFunc[F]) = {
     val requestMessagePrototype = getRequestMessagePrototype(method)
     val javaMethod = futureStubCtor().getClass
@@ -62,7 +62,7 @@ private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with Stri
     methodName.substring(0, 1).toLowerCase + methodName.substring(1)
   }
 
-  private def coreHandler[F[+ _]](requestMessagePrototype: Message, execute: (Message, Map[String, String]) => F[MessageOrBuilder])(
+  private def coreHandler[F[_]](requestMessagePrototype: Message, execute: (Message, Map[String, String]) => F[MessageOrBuilder])(
       implicit F: Async[F]): HandlerFunc[F] = { (json, headers) =>
     {
       parseRequest(json, requestMessagePrototype) match {
@@ -86,7 +86,7 @@ private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with Stri
     }
   }
 
-  private def executeRequest[F[+ _]](ec: ExecutionContext)(futureStubCtor: () => AbstractStub[_], javaMethod: Method)(
+  private def executeRequest[F[_]](ec: ExecutionContext)(futureStubCtor: () => AbstractStub[_], javaMethod: Method)(
       req: Message,
       headers: Map[String, String])(implicit F: Async[F]): F[MessageOrBuilder] = {
     val metaData = {
@@ -107,7 +107,7 @@ private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with Stri
       requestBuilder.build()
     }
 
-  private def fromListenableFuture[F[+ _], A](ec: ExecutionContext)(flf: F[ListenableFuture[A]])(implicit F: Async[F]): F[A] = flf.flatMap {
+  private def fromListenableFuture[F[_], A](ec: ExecutionContext)(flf: F[ListenableFuture[A]])(implicit F: Async[F]): F[A] = flf.flatMap {
     lf =>
       F.async { cb =>
         Futures.addCallback(lf, new FutureCallback[A] {
