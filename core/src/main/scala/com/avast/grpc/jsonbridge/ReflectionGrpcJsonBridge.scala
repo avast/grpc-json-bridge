@@ -9,7 +9,7 @@ import io.grpc.MethodDescriptor.MethodType
 import io.grpc._
 import io.grpc.inprocess.{InProcessChannelBuilder, InProcessServerBuilder}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.ExecutionContext
 import scala.language.higherKinds
 
@@ -28,7 +28,7 @@ object ReflectionGrpcJsonBridge extends ReflectionGrpcJsonBridge(JavaServiceHand
 private[jsonbridge] class ReflectionGrpcJsonBridge(serviceHandlers: ServiceHandlers) extends StrictLogging {
 
   def createFromServer[F[_]](ec: ExecutionContext)(grpcServer: io.grpc.Server)(implicit F: Async[F]): Resource[F, GrpcJsonBridge[F]] = {
-    createFromServices(ec)(grpcServer.getImmutableServices.asScala: _*)
+    createFromServices(ec)(grpcServer.getImmutableServices.asScala.toList: _*)
   }
 
   def createFromServices[F[_]](ec: ExecutionContext)(services: ServerServiceDefinition*)(

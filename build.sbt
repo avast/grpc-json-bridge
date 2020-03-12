@@ -2,18 +2,23 @@ import sbt.Keys.libraryDependencies
 
 val logger: Logger = ConsoleLogger()
 
-crossScalaVersions := Seq("2.12.10", "2.13.1")
+lazy val ScalaVersions = new {
+  val V213 = "2.13.1"
+  val V212 = "2.12.10"
+}
+
+crossScalaVersions := Seq(ScalaVersions.V212, ScalaVersions.V213)
 
 lazy val Versions = new {
   val gpb3Version = "3.11.1"
   val grpcVersion = "1.27.0"
   val circeVersion = "0.13.0"
   val http4sVersion = "0.21.1"
-  val akkaHttp = "10.1.5" // DO NOT upgrade to 10.1.[67] - will cause https://github.com/scala/community-builds/issues/825
+  val akkaHttp = "10.1.11"
 }
 
 lazy val scalaSettings = Seq(
-  scalaVersion := "2.12.10",
+  scalaVersion := ScalaVersions.V213,
   scalacOptions += "-deprecation",
   scalacOptions += "-unchecked",
   scalacOptions += "-feature"
@@ -53,6 +58,8 @@ lazy val commonSettings = Seq(
     ),
   resolvers += Resolver.jcenterRepo,
   libraryDependencies ++= Seq(
+    "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.4",
+    "javax.annotation" % "javax.annotation-api" % "1.3.2",
     "junit" % "junit" % "4.12" % "test",
     "org.scalatest" %% "scalatest" % "3.0.8" % "test",
     "com.novocode" % "junit-interface" % "0.10" % "test", // Required by sbt to execute JUnit tests
@@ -128,7 +135,7 @@ lazy val coreScalaPB = (project in file("core-scalapb")).settings(
     "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
     "com.thesamet.scalapb" %% "scalapb-json4s" % "0.10.1",
     "junit" % "junit" % "4.12" % "test",
-    "org.scalatest" %% "scalatest" % "3.0.5" % "test",
+    "org.scalatest" %% "scalatest" % "3.0.8" % "test",
     "com.novocode" % "junit-interface" % "0.10" % "test", // Required by sbt to execute JUnit tests
     "ch.qos.logback" % "logback-classic" % "1.2.3" % "test",
     "io.grpc" % "grpc-services" % Versions.grpcVersion % "test",
@@ -147,7 +154,7 @@ lazy val http4s = (project in file("http4s")).settings(
     "io.circe" %% "circe-core" % Versions.circeVersion,
     "io.circe" %% "circe-generic" % Versions.circeVersion
   ),
-  scalacOptions += "-Ypartial-unification"
+  scalacOptions ++= { if (scalaVersion.value == ScalaVersions.V212) Seq("-Ypartial-unification") else Seq.empty }
 ).dependsOn(core)
 
 lazy val akkaHttp = (project in file("akka-http")).settings(
@@ -158,7 +165,8 @@ lazy val akkaHttp = (project in file("akka-http")).settings(
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-http" % Versions.akkaHttp,
     "com.typesafe.akka" %% "akka-http-spray-json" % Versions.akkaHttp,
-    "com.typesafe.akka" %% "akka-stream" % "2.5.21",
+    "com.typesafe.akka" %% "akka-stream" % "2.6.3",
+    "com.typesafe.akka" %% "akka-testkit" % "2.6.3" % "test",
     "com.typesafe.akka" %% "akka-http-testkit" % Versions.akkaHttp % "test"
   ),
 ).dependsOn(core)

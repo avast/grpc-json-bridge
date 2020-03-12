@@ -14,7 +14,7 @@ import io.grpc.MethodDescriptor.PrototypeMarshaller
 import io.grpc.stub.AbstractStub
 import io.grpc._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.ExecutionContext
 import scala.language.{existentials, higherKinds}
 import scala.util.control.NonFatal

@@ -15,7 +15,7 @@ import io.grpc.stub.AbstractStub
 import scalapb.json4s.JsonFormatException
 import scalapb.{GeneratedMessage, GeneratedMessageCompanion}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.{existentials, higherKinds}
 import scala.util.control.NonFatal
