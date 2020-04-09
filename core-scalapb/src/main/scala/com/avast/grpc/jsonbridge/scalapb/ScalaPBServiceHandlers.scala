@@ -146,6 +146,7 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
           "Marshaller of unexpected class '{}', we can't be sure it contains the field `companion: GeneratedMessageCompanion[_]`",
           x.getClass
         )
+        x
     }
     val companionField = requestMarshaller.getClass.getDeclaredField("companion")
     companionField.setAccessible(true)
