@@ -138,7 +138,7 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
   }
 
   private def getRequestCompanion(method: ServerMethodDefinition[_, _]): GeneratedMessageCompanion[_] = {
-    val requestMarshaller = method.getMethodDescriptor.getRequestMarshaller.asInstanceOf[scalapb.grpc.Marshaller[_]]
+    val requestMarshaller = method.getMethodDescriptor.getRequestMarshaller.asInstanceOf[scalapb.grpc.TypeMappedMarshaller[_, _]]
     val companionField = requestMarshaller.getClass.getDeclaredField("companion")
     companionField.setAccessible(true)
     companionField.get(requestMarshaller).asInstanceOf[GeneratedMessageCompanion[_]]
