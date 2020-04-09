@@ -138,7 +138,15 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
   }
 
   private def getRequestCompanion(method: ServerMethodDefinition[_, _]): GeneratedMessageCompanion[_] = {
-    val requestMarshaller = method.getMethodDescriptor.getRequestMarshaller.asInstanceOf[scalapb.grpc.TypeMappedMarshaller[_, _]]
+    val requestMarshaller = method.getMethodDescriptor.getRequestMarshaller match {
+      case marshaller: scalapb.grpc.Marshaller[_] => marshaller
+      case typeMappedMarshaller: scalapb.grpc.TypeMappedMarshaller[_, _] => typeMappedMarshaller
+      case x =>
+        logger.warn(
+          "Marshaller of unexpected class '{}', we can't be sure it contains the field `companion: GeneratedMessageCompanion[_]`",
+          x.getClass
+        )
+    }
     val companionField = requestMarshaller.getClass.getDeclaredField("companion")
     companionField.setAccessible(true)
     companionField.get(requestMarshaller).asInstanceOf[GeneratedMessageCompanion[_]]

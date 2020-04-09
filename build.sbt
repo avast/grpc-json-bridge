@@ -11,7 +11,7 @@ crossScalaVersions := Seq(ScalaVersions.V212, ScalaVersions.V213)
 
 lazy val Versions = new {
   val gpb3Version = "3.11.1"
-  val grpcVersion = "1.27.0"
+  val grpcVersion = "1.28.1"
   val circeVersion = "0.13.0"
   val http4sVersion = "0.21.1"
   val akkaHttp = "10.1.11"
