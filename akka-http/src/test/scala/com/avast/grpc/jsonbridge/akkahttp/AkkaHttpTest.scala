@@ -8,12 +8,12 @@ import cats.data.NonEmptyList
 import cats.effect.IO
 import com.avast.grpc.jsonbridge._
 import io.grpc.ServerServiceDefinition
-import org.scalatest.FunSuite
 
 import scala.concurrent.ExecutionContext
 import scala.util.Random
+import org.scalatest.funsuite.AnyFunSuite
 
-class AkkaHttpTest extends FunSuite with ScalatestRouteTest {
+class AkkaHttpTest extends AnyFunSuite with ScalatestRouteTest {
 
   val ec: ExecutionContext = implicitly[ExecutionContext]
   def bridge(ssd: ServerServiceDefinition): GrpcJsonBridge[IO] =

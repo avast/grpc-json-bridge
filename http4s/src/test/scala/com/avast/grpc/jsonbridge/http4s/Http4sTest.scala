@@ -6,14 +6,14 @@ import com.avast.grpc.jsonbridge._
 import io.grpc.ServerServiceDefinition
 import org.http4s.headers.{`Content-Length`, `Content-Type`}
 import org.http4s.{Charset, Header, Headers, MediaType, Method, Request, Uri}
-import org.scalatest.FunSuite
 import org.scalatest.concurrent.ScalaFutures
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
+import org.scalatest.funsuite.AnyFunSuite
 
-class Http4sTest extends FunSuite with ScalaFutures {
+class Http4sTest extends AnyFunSuite with ScalaFutures {
 
   val ec: ExecutionContext = implicitly[ExecutionContext]
   def bridge(ssd: ServerServiceDefinition): GrpcJsonBridge[IO] =
