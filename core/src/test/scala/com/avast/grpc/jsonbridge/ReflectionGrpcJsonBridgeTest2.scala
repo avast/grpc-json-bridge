@@ -8,8 +8,10 @@ import io.grpc.services.HealthStatusManager
 import org.scalatest._
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import org.scalatest.flatspec
+import org.scalatest.matchers.should.Matchers
 
-class ReflectionGrpcJsonBridgeTest2 extends fixture.FlatSpec with Matchers {
+class ReflectionGrpcJsonBridgeTest2 extends flatspec.FixtureAnyFlatSpec with Matchers {
 
   case class FixtureParam(bridge: GrpcJsonBridge[IO])
 
