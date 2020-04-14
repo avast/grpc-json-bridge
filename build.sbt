@@ -13,7 +13,7 @@ lazy val Versions = new {
   val gpb3Version = "3.11.1"
   val grpcVersion = "1.28.1"
   val circeVersion = "0.13.0"
-  val http4sVersion = "0.21.1"
+  val http4sVersion = "0.21.3"
   val akkaHttp = "10.1.11"
 }
 
@@ -60,9 +60,9 @@ lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.4",
     "javax.annotation" % "javax.annotation-api" % "1.3.2",
-    "junit" % "junit" % "4.12" % "test",
+    "junit" % "junit" % "4.13" % "test",
     "org.scalatest" %% "scalatest" % "3.1.1" % "test",
-    "com.novocode" % "junit-interface" % "0.10" % "test", // Required by sbt to execute JUnit tests
+    "com.novocode" % "junit-interface" % "0.11" % "test", // Required by sbt to execute JUnit tests
     "ch.qos.logback" % "logback-classic" % "1.2.3" % "test"
   ),
   testOptions += Tests.Argument(TestFrameworks.JUnit)
@@ -134,9 +134,9 @@ lazy val coreScalaPB = (project in file("core-scalapb")).settings(
   libraryDependencies ++= Seq(
     "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
     "com.thesamet.scalapb" %% "scalapb-json4s" % "0.10.1",
-    "junit" % "junit" % "4.12" % "test",
+    "junit" % "junit" % "4.13" % "test",
     "org.scalatest" %% "scalatest" % "3.1.1" % "test",
-    "com.novocode" % "junit-interface" % "0.10" % "test", // Required by sbt to execute JUnit tests
+    "com.novocode" % "junit-interface" % "0.11" % "test", // Required by sbt to execute JUnit tests
     "ch.qos.logback" % "logback-classic" % "1.2.3" % "test",
     "io.grpc" % "grpc-services" % Versions.grpcVersion % "test",
     "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf")
