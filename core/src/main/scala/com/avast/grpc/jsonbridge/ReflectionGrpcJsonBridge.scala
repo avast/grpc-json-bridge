@@ -67,7 +67,10 @@ private[jsonbridge] class ReflectionGrpcJsonBridge(serviceHandlers: ServiceHandl
       implicit F: Sync[F]): Resource[F, Server] =
     Resource {
       F.delay {
-        val b = InProcessServerBuilder.forName(inProcessServiceName).executor(ec.execute(_))
+        val b = InProcessServerBuilder
+          .forName(inProcessServiceName)
+          .maxInboundMessageSize(Int.MaxValue)
+          .executor(ec.execute(_))
         services.foreach(b.addService)
         val s = b.build().start()
         (s, F.delay { s.shutdown().awaitTermination() })
@@ -78,7 +81,11 @@ private[jsonbridge] class ReflectionGrpcJsonBridge(serviceHandlers: ServiceHandl
       implicit F: Sync[F]): Resource[F, ManagedChannel] =
     Resource[F, ManagedChannel] {
       F.delay {
-        val c = InProcessChannelBuilder.forName(inProcessServiceName).executor(ec.execute(_)).build()
+        val c = InProcessChannelBuilder
+          .forName(inProcessServiceName)
+          .maxInboundMessageSize(Int.MaxValue)
+          .executor(ec.execute(_))
+          .build()
         (c, F.delay { val _ = c.shutdown() })
       }
     }
