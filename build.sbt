@@ -58,7 +58,7 @@ lazy val commonSettings = Seq(
     ),
   resolvers += Resolver.jcenterRepo,
   libraryDependencies ++= Seq(
-    "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.5",
+    "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.6",
     "javax.annotation" % "javax.annotation-api" % "1.3.2",
     "junit" % "junit" % "4.13" % "test",
     "org.scalatest" %% "scalatest" % "3.1.1" % "test",
