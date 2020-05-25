@@ -133,7 +133,7 @@ lazy val coreScalaPB = (project in file("core-scalapb")).settings(
   grpcScalaPBTestGenSettings,
   libraryDependencies ++= Seq(
     "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
-    "com.thesamet.scalapb" %% "scalapb-json4s" % "0.10.1",
+    "com.thesamet.scalapb" %% "scalapb-json4s" % "0.10.3",
     "junit" % "junit" % "4.13" % "test",
     "org.scalatest" %% "scalatest" % "3.1.2" % "test",
     "com.novocode" % "junit-interface" % "0.11" % "test", // Required by sbt to execute JUnit tests
