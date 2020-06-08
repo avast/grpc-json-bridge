@@ -165,8 +165,8 @@ lazy val akkaHttp = (project in file("akka-http")).settings(
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-http" % Versions.akkaHttp,
     "com.typesafe.akka" %% "akka-http-spray-json" % Versions.akkaHttp,
-    "com.typesafe.akka" %% "akka-stream" % "2.6.5",
-    "com.typesafe.akka" %% "akka-testkit" % "2.6.5" % "test",
+    "com.typesafe.akka" %% "akka-stream" % "2.6.6",
+    "com.typesafe.akka" %% "akka-testkit" % "2.6.6" % "test",
     "com.typesafe.akka" %% "akka-http-testkit" % Versions.akkaHttp % "test"
   ),
 ).dependsOn(core)
