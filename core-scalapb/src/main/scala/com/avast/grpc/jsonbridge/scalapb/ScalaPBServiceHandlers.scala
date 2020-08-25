@@ -12,6 +12,7 @@ import com.typesafe.scalalogging.StrictLogging
 import io.grpc._
 import io.grpc.protobuf.ProtoFileDescriptorSupplier
 import io.grpc.stub.AbstractStub
+import org.json4s.ParserUtil.ParseException
 import scalapb.json4s.JsonFormatException
 import scalapb.{GeneratedMessage, GeneratedMessageCompanion}
 
@@ -95,6 +96,7 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
       parse(input, requestCompanion) match {
         case Left(e: JsonProcessingException) => F.pure(Left(BridgeError.Json(e)))
         case Left(e: JsonFormatException) => F.pure(Left(BridgeError.Json(e)))
+        case Left(e: ParseException) => F.pure(Left(BridgeError.Json(e)))
         case Left(e) => F.pure(Left(BridgeError.Unknown(e)))
         case Right(request) =>
           fromScalaFuture(ec) {
