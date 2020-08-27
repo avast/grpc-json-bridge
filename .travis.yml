@@ -1,7 +1,0 @@
-language: scala
-scala:
-  - 2.12.8
-jdk:
-  - openjdk8
-script: ./.travis.sh
-skip_cleanup: true

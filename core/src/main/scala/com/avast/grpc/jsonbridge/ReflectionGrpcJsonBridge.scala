@@ -9,17 +9,17 @@ import io.grpc.MethodDescriptor.MethodType
 import io.grpc._
 import io.grpc.inprocess.{InProcessChannelBuilder, InProcessServerBuilder}
 
-import scala.jdk.CollectionConverters._
 import scala.concurrent.ExecutionContext
-import scala.language.higherKinds
+import scala.jdk.CollectionConverters._
 
 object ReflectionGrpcJsonBridge extends ReflectionGrpcJsonBridge(JavaServiceHandlers) {
   // JSON body and headers to a response (fail status or JSON response)
   type HandlerFunc[F[_]] = (String, Map[String, String]) => F[Either[BridgeError.Narrow, String]]
 
   trait ServiceHandlers {
-    def createServiceHandlers[F[_]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
-        implicit F: Async[F]): Map[GrpcMethodName, HandlerFunc[F]]
+    def createServiceHandlers[F[_]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(implicit
+        F: Async[F]
+    ): Map[GrpcMethodName, HandlerFunc[F]]
   }
 
   def isSupportedMethod(d: ServerMethodDefinition[_, _]): Boolean = d.getMethodDescriptor.getType == MethodType.UNARY
@@ -31,15 +31,17 @@ private[jsonbridge] class ReflectionGrpcJsonBridge(serviceHandlers: ServiceHandl
     createFromServices(ec)(grpcServer.getImmutableServices.asScala.toList: _*)
   }
 
-  def createFromServices[F[_]](ec: ExecutionContext)(services: ServerServiceDefinition*)(
-      implicit F: Async[F]): Resource[F, GrpcJsonBridge[F]] = {
+  def createFromServices[F[_]](
+      ec: ExecutionContext
+  )(services: ServerServiceDefinition*)(implicit F: Async[F]): Resource[F, GrpcJsonBridge[F]] = {
     for {
       inProcessServiceName <- Resource.liftF(F.delay { s"ReflectionGrpcJsonBridge-${System.nanoTime()}" })
       inProcessServer <- createInProcessServer(ec)(inProcessServiceName, services)
       inProcessChannel <- createInProcessChannel(ec)(inProcessServiceName)
-      handlersPerMethod = inProcessServer.getImmutableServices.asScala
-        .flatMap(serviceHandlers.createServiceHandlers(ec)(inProcessChannel)(_))
-        .toMap
+      handlersPerMethod =
+        inProcessServer.getImmutableServices.asScala
+          .flatMap(serviceHandlers.createServiceHandlers(ec)(inProcessChannel)(_))
+          .toMap
       bridge = createFromHandlers(handlersPerMethod)
     } yield bridge
   }
@@ -47,9 +49,11 @@ private[jsonbridge] class ReflectionGrpcJsonBridge(serviceHandlers: ServiceHandl
   def createFromHandlers[F[_]](handlersPerMethod: Map[GrpcMethodName, HandlerFunc[F]])(implicit F: Async[F]): GrpcJsonBridge[F] = {
     new GrpcJsonBridge[F] {
 
-      override def invoke(methodName: GrpcJsonBridge.GrpcMethodName,
-                          body: String,
-                          headers: Map[String, String]): F[Either[BridgeError, String]] =
+      override def invoke(
+          methodName: GrpcJsonBridge.GrpcMethodName,
+          body: String,
+          headers: Map[String, String]
+      ): F[Either[BridgeError, String]] =
         handlersPerMethod.get(methodName) match {
           case Some(handler) => handler(body, headers).map(x => x: Either[BridgeError, String])
           case None => F.pure(Left(BridgeError.GrpcMethodNotFound))
@@ -63,8 +67,9 @@ private[jsonbridge] class ReflectionGrpcJsonBridge(serviceHandlers: ServiceHandl
     }
   }
 
-  private def createInProcessServer[F[_]](ec: ExecutionContext)(inProcessServiceName: String, services: Seq[ServerServiceDefinition])(
-      implicit F: Sync[F]): Resource[F, Server] =
+  private def createInProcessServer[F[_]](
+      ec: ExecutionContext
+  )(inProcessServiceName: String, services: Seq[ServerServiceDefinition])(implicit F: Sync[F]): Resource[F, Server] =
     Resource {
       F.delay {
         val b = InProcessServerBuilder
@@ -77,8 +82,9 @@ private[jsonbridge] class ReflectionGrpcJsonBridge(serviceHandlers: ServiceHandl
       }
     }
 
-  private def createInProcessChannel[F[_]](ec: ExecutionContext)(inProcessServiceName: String)(
-      implicit F: Sync[F]): Resource[F, ManagedChannel] =
+  private def createInProcessChannel[F[_]](
+      ec: ExecutionContext
+  )(inProcessServiceName: String)(implicit F: Sync[F]): Resource[F, ManagedChannel] =
     Resource[F, ManagedChannel] {
       F.delay {
         val c = InProcessChannelBuilder
