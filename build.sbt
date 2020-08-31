@@ -63,6 +63,9 @@ lazy val commonSettings = Seq(
     "com.novocode" % "junit-interface" % "0.11" % "test", // Required by sbt to execute JUnit tests
     "ch.qos.logback" % "logback-classic" % "1.2.3" % "test"
   ),
+  missinglinkExcludedDependencies ++= List(
+    moduleFilter(organization = "org.slf4j", name = "slf4j-api")
+  ),
   testOptions += Tests.Argument(TestFrameworks.JUnit)
 )
 
