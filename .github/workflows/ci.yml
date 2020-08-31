@@ -1,0 +1,20 @@
+name: CI
+on:
+  pull_request:
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2.1.0
+        with:
+          fetch-depth: 100
+      - name: Fetch tags
+        run: git fetch --depth=100 origin +refs/tags/*:refs/tags/*
+      - uses: olafurpg/setup-scala@v7
+        with:
+          java-version: adopt@1.11
+      - uses: olafurpg/setup-gpg@v2
+      - name: sbt ci ${{ github.ref }}
+        run: ./sbt ci
