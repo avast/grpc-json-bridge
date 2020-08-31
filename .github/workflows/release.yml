@@ -17,7 +17,7 @@ jobs:
           java-version: adopt@1.11
       - uses: olafurpg/setup-gpg@v2
       - name: sbt ci-release ${{ github.ref }}
-        run: ./sbt ci-release
+        run: ./sbt ci # do ci-release after switch from Travis to GitHub Actions
         env:
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
