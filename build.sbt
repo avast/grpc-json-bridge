@@ -1,4 +1,4 @@
-import sbt.Keys.libraryDependencies
+import com.typesafe.tools.mima.core._
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
@@ -48,9 +48,22 @@ lazy val commonSettings = Seq(
       url("https://github.com/sideeffffect")
     )
   ),
-  scalaVersion := ScalaVersions.V213,
   ThisBuild / turbo := true,
+  scalaVersion := ScalaVersions.V213,
+  scalacOptions --= {
+    if (!sys.env.contains("CI"))
+      List("-Xfatal-warnings") // to enable Scalafix
+    else
+      List()
+  },
   description := "Library for exposing gRPC endpoints via HTTP API",
+  semanticdbEnabled := true, // enable SemanticDB
+  semanticdbVersion := scalafixSemanticdb.revision, // use Scalafix compatible version
+  ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
+  ThisBuild / scalafixDependencies ++= List(
+    "com.github.liancheng" %% "organize-imports" % "0.4.0",
+    "com.github.vovapolu" %% "scaluzzi" % "0.1.12"
+  ),
   libraryDependencies ++= Seq(
     "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.6",
     "javax.annotation" % "javax.annotation-api" % "1.3.2",
@@ -62,8 +75,23 @@ lazy val commonSettings = Seq(
   missinglinkExcludedDependencies ++= List(
     moduleFilter(organization = "org.slf4j", name = "slf4j-api")
   ),
+  // Edit the following once we release 0.18.0
+  mimaPreviousArtifacts := Set(organization.value %% moduleName.value % "0.17.9"),
+  mimaBinaryIssueFilters ++= Seq(
+    ProblemFilters.exclude[FinalClassProblem]("com.avast.grpc.jsonbridge.GrpcJsonBridge$GrpcMethodName"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("com.avast.grpc.jsonbridge.akkahttp.AkkaHttp.apply"),
+    ProblemFilters.exclude[FinalClassProblem]("com.avast.grpc.jsonbridge.akkahttp.Configuration"),
+    ProblemFilters.exclude[FinalClassProblem]("com.avast.grpc.jsonbridge.http4s.Configuration")
+  ),
+  resolvers += Resolver.jcenterRepo,
   testOptions += Tests.Argument(TestFrameworks.JUnit)
-)
+) ++
+  addCommandAlias("check", "; lint; +missinglinkCheck; +mimaReportBinaryIssues; +test") ++
+  addCommandAlias(
+    "lint",
+    "; scalafmtSbtCheck; scalafmtCheckAll; compile:scalafix --check; test:scalafix --check"
+  ) ++
+  addCommandAlias("fix", "; compile:scalafix; test:scalafix; scalafmtSbt; scalafmtAll")
 
 lazy val grpcTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufConfigSettings) ++ Seq(
   PB.protocVersion := "-v391",
@@ -100,7 +128,8 @@ lazy val root = project
   .settings(commonSettings)
   .settings(
     name := "grpc-json-bridge",
-    publish / skip := true // doesn't publish ivy XML files, in contrast to "publishArtifact := false"
+    publish / skip := true, // doesn't publish ivy XML files, in contrast to "publishArtifact := false"
+    mimaReportBinaryIssues := {}
   )
   .aggregate(core, http4s, akkaHttp, coreScalaPB)
 
@@ -152,8 +181,7 @@ lazy val http4s = (project in file("http4s"))
       "org.http4s" %% "http4s-circe" % Versions.http4sVersion,
       "io.circe" %% "circe-core" % Versions.circeVersion,
       "io.circe" %% "circe-generic" % Versions.circeVersion
-    ),
-    scalacOptions ++= { if (scalaVersion.value == ScalaVersions.V212) Seq("-Ypartial-unification") else Seq.empty }
+    )
   )
   .dependsOn(core)
 
