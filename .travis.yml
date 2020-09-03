@@ -5,14 +5,17 @@ before_install:
   - git fetch --tags
 stages:
   - name: CI
-  - name: publish
+  - name: release
     if: ((branch = master AND type = push) OR (tag IS present)) AND NOT fork
 jobs:
   include:
-    - name: CI
+    # stage="test" if no stage is specified
+    - stage: CI
+      name: sbt ci
       script: ./sbt ci
     # run ci-release only if previous stages passed
-    - stage: publish
+    - stage: release
+      name: sbt ci-release
       script: ./sbt ci-release
 before_cache:
   - rm -Rf $HOME/.ivy2/local/com.avast.grpc
