@@ -1,7 +1,8 @@
 # gRPC JSON Bridge
 
 [![Build Status](https://travis-ci.org/avast/grpc-json-bridge.svg?branch=master)](https://travis-ci.org/avast/grpc-json-bridge)
-[![Download](https://api.bintray.com/packages/avast/maven/grpc-json-bridge/images/download.svg) ](https://bintray.com/avast/maven/grpc-json-bridge/_latestVersion)
+[![Release Artifacts][Badge-SonatypeReleases]][Link-SonatypeReleases]
+[![Snapshot Artifacts][Badge-SonatypeSnapshots]][Link-SonatypeSnapshots]
 
 This library allows to make a JSON encoded HTTP request to a gRPC service that is implemented in Java or Scala (using ScalaPB).
 
@@ -118,3 +119,9 @@ Call a method (please note that `POST` and `application/json` must be always spe
 
 {"sum":3}
 ```
+
+[Link-SonatypeReleases]: https://search.maven.org/artifact/com.avast.grpc/grpc-json-bridge-core_2.13 "Sonatype Releases"
+[Link-SonatypeSnapshots]: https://oss.sonatype.org/content/repositories/snapshots/com/avast/grpc/grpc-json-bridge-core_2.13/ "Sonatype Snapshots"
+
+[Badge-SonatypeReleases]: https://img.shields.io/nexus/r/https/oss.sonatype.org/com.avast.grpc/grpc-json-bridge-core_2.13.svg "Sonatype Releases"
+[Badge-SonatypeSnapshots]: https://img.shields.io/nexus/s/https/oss.sonatype.org/com.avast.grpc/grpc-json-bridge-core_2.13.svg "Sonatype Snapshots"
