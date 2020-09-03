@@ -5,11 +5,10 @@ import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import io.grpc.inprocess.InProcessServerBuilder
 import io.grpc.protobuf.services.ProtoReflectionService
 import io.grpc.services.HealthStatusManager
-import org.scalatest._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.{flatspec, _}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import org.scalatest.flatspec
-import org.scalatest.matchers.should.Matchers
 
 class ReflectionGrpcJsonBridgeTest2 extends flatspec.FixtureAnyFlatSpec with Matchers {
 

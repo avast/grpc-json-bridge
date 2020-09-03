@@ -8,10 +8,10 @@ import cats.data.NonEmptyList
 import cats.effect.IO
 import com.avast.grpc.jsonbridge._
 import io.grpc.ServerServiceDefinition
+import org.scalatest.funsuite.AnyFunSuite
 
 import scala.concurrent.ExecutionContext
 import scala.util.Random
-import org.scalatest.funsuite.AnyFunSuite
 
 class AkkaHttpTest extends AnyFunSuite with ScalatestRouteTest {
 

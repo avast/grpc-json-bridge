@@ -16,15 +16,15 @@ import org.json4s.ParserUtil.ParseException
 import scalapb.json4s.JsonFormatException
 import scalapb.{GeneratedMessage, GeneratedMessageCompanion}
 
-import scala.jdk.CollectionConverters._
 import scala.concurrent.{ExecutionContext, Future}
-import scala.language.{existentials, higherKinds}
+import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with StrictLogging {
-  def createServiceHandlers[F[_]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
-      implicit F: Async[F]): Map[GrpcMethodName, HandlerFunc[F]] = {
+  def createServiceHandlers[F[_]](
+      ec: ExecutionContext
+  )(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(implicit F: Async[F]): Map[GrpcMethodName, HandlerFunc[F]] = {
     if (ssd.getServiceDescriptor.getName.startsWith("grpc.reflection.") || ssd.getServiceDescriptor.getName.startsWith("grpc.health.")) {
       logger.debug("Reflection and health endpoint service cannot be bridged because its implementation is not ScalaPB-based")
       Map.empty
@@ -69,8 +69,7 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
       .getOrElse(sys.error(s"Classes cannot be loaded: ${serviceCompanionClassNames.mkString(", ")}"))
     val serviceCompanion = serviceCompanionClass.getDeclaredField("MODULE$").get(null)
     val method = serviceCompanionClass.getDeclaredMethod("stub", classOf[Channel])
-    () =>
-      method.invoke(serviceCompanion, inProcessChannel).asInstanceOf[AbstractStub[_]]
+    () => method.invoke(serviceCompanion, inProcessChannel).asInstanceOf[AbstractStub[_]]
   }
 
   private def getPossibleServiceCompanionClassNames(sd: ServiceDescriptor): Seq[String] = {
@@ -87,8 +86,9 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
     Seq(servicePackage + "." + fileNameWithoutExtension + "." + serviceName + "Grpc$", servicePackage + "." + serviceName + "Grpc$")
   }
 
-  private def createHandler[F[_]](ec: ExecutionContext)(futureStubCtor: () => AbstractStub[_])(method: ServerMethodDefinition[_, _])(
-      implicit F: Async[F]): (GrpcMethodName, HandlerFunc[F]) = {
+  private def createHandler[F[_]](
+      ec: ExecutionContext
+  )(futureStubCtor: () => AbstractStub[_])(method: ServerMethodDefinition[_, _])(implicit F: Async[F]): (GrpcMethodName, HandlerFunc[F]) = {
     val requestCompanion = getRequestCompanion(method)
     val requestClass = Class.forName(requestCompanion.getClass.getName.stripSuffix("$"))
     val scalaMethod = futureStubCtor().getClass.getDeclaredMethod(getScalaMethodName(method), requestClass)
@@ -104,15 +104,17 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
               executeCore(request, headers, futureStubCtor, scalaMethod)(ec)
             }
           }
-    }
+      }
     val grpcMethodName = GrpcMethodName(method.getMethodDescriptor.getFullMethodName)
     (grpcMethodName, handler)
   }
 
-  private def executeCore(request: GeneratedMessage,
-                          headers: Map[String, String],
-                          futureStubCtor: () => AbstractStub[_],
-                          scalaMethod: Method)(implicit ec: ExecutionContext): Future[Either[BridgeError.Narrow, String]] = {
+  private def executeCore(
+      request: GeneratedMessage,
+      headers: Map[String, String],
+      futureStubCtor: () => AbstractStub[_],
+      scalaMethod: Method
+  )(implicit ec: ExecutionContext): Future[Either[BridgeError.Narrow, String]] = {
     val metadata = {
       val md = new Metadata()
       headers.foreach { case (k, v) => md.put(Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER), v) }
@@ -155,12 +157,13 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
     companionField.get(requestMarshaller).asInstanceOf[GeneratedMessageCompanion[_]]
   }
 
-  private def fromScalaFuture[F[_], A](ec: ExecutionContext)(fsf: F[Future[A]])(implicit F: Async[F]): F[A] = fsf.flatMap { sf =>
-    F.async { cb =>
-      sf.onComplete {
-        case Success(r) => cb(Right(r))
-        case Failure(e) => cb(Left(BridgeError.Unknown(e)))
-      }(ec)
+  private def fromScalaFuture[F[_], A](ec: ExecutionContext)(fsf: F[Future[A]])(implicit F: Async[F]): F[A] =
+    fsf.flatMap { sf =>
+      F.async { cb =>
+        sf.onComplete {
+          case Success(r) => cb(Right(r))
+          case Failure(e) => cb(Left(BridgeError.Unknown(e)))
+        }(ec)
+      }
     }
-  }
 }

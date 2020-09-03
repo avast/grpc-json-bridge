@@ -6,11 +6,12 @@ final case class BridgeErrorResponse(description: Option[String], exception: Opt
 
 object BridgeErrorResponse {
 
-  def fromGrpcStatus(s: Status): BridgeErrorResponse = BridgeErrorResponse(
-    Option(s.getDescription),
-    Option(s.getCause).flatMap(e => Option(e.getClass.getCanonicalName)),
-    Option(s.getCause).flatMap(e => Option(e.getMessage))
-  )
+  def fromGrpcStatus(s: Status): BridgeErrorResponse =
+    BridgeErrorResponse(
+      Option(s.getDescription),
+      Option(s.getCause).flatMap(e => Option(e.getClass.getCanonicalName)),
+      Option(s.getCause).flatMap(e => Option(e.getMessage))
+    )
 
   def fromMessage(message: String): BridgeErrorResponse = {
     BridgeErrorResponse(Some(message), None, None)
