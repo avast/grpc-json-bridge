@@ -3,7 +3,7 @@ package com.avast.grpc.jsonbridge.scalapb
 import java.lang.reflect.{InvocationTargetException, Method}
 
 import cats.effect.Async
-import cats.implicits._
+import cats.syntax.all._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge.{HandlerFunc, ServiceHandlers}
 import com.avast.grpc.jsonbridge.{BridgeError, JavaGenericHelper, ReflectionGrpcJsonBridge}
