@@ -75,7 +75,7 @@ lazy val commonSettings = Seq(
   missinglinkExcludedDependencies ++= List(
     moduleFilter(organization = "org.slf4j", name = "slf4j-api")
   ),
-  mimaPreviousArtifacts := Set(organization.value %% moduleName.value % "0.18.0"),
+  mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet,
   mimaBinaryIssueFilters ++= Seq(
   ),
   testOptions += Tests.Argument(TestFrameworks.JUnit)
