@@ -217,5 +217,5 @@ val grpcExePath = SettingKey[xsbti.api.Lazy[File]]("grpcExePath")
 
 addCommandAlias(
   "ci",
-  "; check; publishLocal"
+  "; check; +publishLocal"
 )
