@@ -74,16 +74,7 @@ lazy val commonSettings = Seq(
   missinglinkExcludedDependencies ++= List(
     moduleFilter(organization = "org.slf4j", name = "slf4j-api")
   ),
-// TODO: change back to this once 0.18.1 is released
-// mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet,
-  mimaPreviousArtifacts := Set(organization.value %% moduleName.value % "0.17.9"),
-  mimaBinaryIssueFilters ++= Seq(
-    ProblemFilters.exclude[FinalClassProblem]("com.avast.grpc.jsonbridge.GrpcJsonBridge$GrpcMethodName"),
-    ProblemFilters.exclude[DirectMissingMethodProblem]("com.avast.grpc.jsonbridge.akkahttp.AkkaHttp.apply"),
-    ProblemFilters.exclude[FinalClassProblem]("com.avast.grpc.jsonbridge.akkahttp.Configuration"),
-    ProblemFilters.exclude[FinalClassProblem]("com.avast.grpc.jsonbridge.http4s.Configuration")
-  ),
-  resolvers += Resolver.jcenterRepo,
+  mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet,
   testOptions += Tests.Argument(TestFrameworks.JUnit)
 ) ++
   addCommandAlias("check", "; lint; +missinglinkCheck; +mimaReportBinaryIssues; +test") ++

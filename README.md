@@ -1,6 +1,7 @@
 # gRPC JSON Bridge
 
 [![Build Status](https://travis-ci.org/avast/grpc-json-bridge.svg?branch=master)](https://travis-ci.org/avast/grpc-json-bridge)
+[![Build Status][Badge-GitHubActions]][Link-GitHubActions]
 [![Release Artifacts][Badge-SonatypeReleases]][Link-SonatypeReleases]
 [![Snapshot Artifacts][Badge-SonatypeSnapshots]][Link-SonatypeSnapshots]
 
@@ -119,6 +120,9 @@ Call a method (please note that `POST` and `application/json` must be always spe
 
 {"sum":3}
 ```
+
+[Link-GitHubActions]: https://github.com/avast/grpc-json-bridge/actions?query=workflow%3ARelease+branch%3Amaster "GitHub Actions link"
+[Badge-GitHubActions]: https://github.com/avast/grpc-json-bridge/workflows/Release/badge.svg?branch=master "GitHub Actions badge"
 
 [Link-SonatypeReleases]: https://search.maven.org/artifact/com.avast.grpc/grpc-json-bridge-core_2.13 "Sonatype Releases"
 [Link-SonatypeSnapshots]: https://oss.sonatype.org/content/repositories/snapshots/com/avast/grpc/grpc-json-bridge-core_2.13/ "Sonatype Snapshots"
