@@ -9,8 +9,6 @@ lazy val ScalaVersions = new {
   val V212 = "2.12.12"
 }
 
-crossScalaVersions := Seq(ScalaVersions.V212, ScalaVersions.V213)
-
 lazy val Versions = new {
   val gpb3Version = "3.11.1"
   val grpcVersion = "1.31.1"
@@ -50,6 +48,7 @@ lazy val commonSettings = Seq(
   ),
   ThisBuild / turbo := true,
   scalaVersion := ScalaVersions.V213,
+  crossScalaVersions := Seq(ScalaVersions.V212, ScalaVersions.V213),
   scalacOptions --= {
     if (!sys.env.contains("CI"))
       List("-Xfatal-warnings") // to enable Scalafix
@@ -75,9 +74,16 @@ lazy val commonSettings = Seq(
   missinglinkExcludedDependencies ++= List(
     moduleFilter(organization = "org.slf4j", name = "slf4j-api")
   ),
-  mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet,
+// TODO: change back to this once 0.18.1 is released
+// mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet,
+  mimaPreviousArtifacts := Set(organization.value %% moduleName.value % "0.17.9"),
   mimaBinaryIssueFilters ++= Seq(
+    ProblemFilters.exclude[FinalClassProblem]("com.avast.grpc.jsonbridge.GrpcJsonBridge$GrpcMethodName"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("com.avast.grpc.jsonbridge.akkahttp.AkkaHttp.apply"),
+    ProblemFilters.exclude[FinalClassProblem]("com.avast.grpc.jsonbridge.akkahttp.Configuration"),
+    ProblemFilters.exclude[FinalClassProblem]("com.avast.grpc.jsonbridge.http4s.Configuration")
   ),
+  resolvers += Resolver.jcenterRepo,
   testOptions += Tests.Argument(TestFrameworks.JUnit)
 ) ++
   addCommandAlias("check", "; lint; +missinglinkCheck; +mimaReportBinaryIssues; +test") ++
@@ -211,5 +217,5 @@ val grpcExePath = SettingKey[xsbti.api.Lazy[File]]("grpcExePath")
 
 addCommandAlias(
   "ci",
-  "; check; publishLocal"
+  "; check; +publishLocal"
 )
