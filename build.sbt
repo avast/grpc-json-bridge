@@ -9,8 +9,6 @@ lazy val ScalaVersions = new {
   val V212 = "2.12.12"
 }
 
-crossScalaVersions := Seq(ScalaVersions.V212, ScalaVersions.V213)
-
 lazy val Versions = new {
   val gpb3Version = "3.11.1"
   val grpcVersion = "1.31.1"
@@ -50,6 +48,7 @@ lazy val commonSettings = Seq(
   ),
   ThisBuild / turbo := true,
   scalaVersion := ScalaVersions.V213,
+  crossScalaVersions := Seq(ScalaVersions.V212, ScalaVersions.V213),
   scalacOptions --= {
     if (!sys.env.contains("CI"))
       List("-Xfatal-warnings") // to enable Scalafix
