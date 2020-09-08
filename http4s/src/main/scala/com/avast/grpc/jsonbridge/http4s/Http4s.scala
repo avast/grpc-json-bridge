@@ -1,23 +1,21 @@
 package com.avast.grpc.jsonbridge.http4s
 
+import cats._
 import cats.data.NonEmptyList
 import cats.effect._
 import cats.syntax.all._
-import cats._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import com.avast.grpc.jsonbridge.{BridgeError, BridgeErrorResponse, GrpcJsonBridge}
 import com.typesafe.scalalogging.LazyLogging
 import io.circe.generic.auto._
 import io.grpc.Status.Code
 import io.grpc.{Status => GrpcStatus}
+import org.http4s._
 import org.http4s.circe.jsonEncoderOf
 import org.http4s.dsl.Http4sDsl
 import org.http4s.dsl.impl.EntityResponseGenerator
 import org.http4s.headers.{`Content-Type`, `WWW-Authenticate`}
 import org.http4s.server.middleware.{CORS, CORSConfig}
-import org.http4s._
-
-import scala.language.{higherKinds, implicitConversions}
 
 object Http4s extends LazyLogging {
 
@@ -141,9 +139,11 @@ object Http4s extends LazyLogging {
     jsonEncoderOf[F, BridgeErrorResponse]
 }
 
-case class Configuration(pathPrefix: Option[NonEmptyList[String]],
-                         authChallenges: NonEmptyList[Challenge],
-                         corsConfig: Option[CORSConfig]) {
+final case class Configuration(
+    pathPrefix: Option[NonEmptyList[String]],
+    authChallenges: NonEmptyList[Challenge],
+    corsConfig: Option[CORSConfig]
+) {
   private[http4s] val wwwAuthenticate: `WWW-Authenticate` = `WWW-Authenticate`(authChallenges)
 }
 

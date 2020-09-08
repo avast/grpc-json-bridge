@@ -15,8 +15,6 @@ import com.typesafe.scalalogging.LazyLogging
 import io.grpc.Status.Code
 import spray.json._
 
-import scala.concurrent.ExecutionContext
-import scala.language.higherKinds
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
@@ -28,7 +26,7 @@ object AkkaHttp extends SprayJsonSupport with DefaultJsonProtocol with LazyLoggi
     ContentType.WithMissingCharset(MediaType.applicationWithOpenCharset("json"))
   }
 
-  def apply[F[_]: Effect](configuration: Configuration)(bridge: GrpcJsonBridge[F])(implicit ec: ExecutionContext): Route = {
+  def apply[F[_]: Effect](configuration: Configuration)(bridge: GrpcJsonBridge[F]): Route = {
 
     val pathPattern = configuration.pathPrefix
       .map {
@@ -164,7 +162,7 @@ object AkkaHttp extends SprayJsonSupport with DefaultJsonProtocol with LazyLoggi
   }
 }
 
-case class Configuration private (pathPrefix: Option[NonEmptyList[String]])
+final case class Configuration private (pathPrefix: Option[NonEmptyList[String]])
 
 object Configuration {
   val Default: Configuration = Configuration(

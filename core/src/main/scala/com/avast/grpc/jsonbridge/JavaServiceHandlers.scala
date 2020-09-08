@@ -3,7 +3,7 @@ package com.avast.grpc.jsonbridge
 import java.lang.reflect.Method
 
 import cats.effect.Async
-import cats.implicits._
+import cats.syntax.all._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge.{HandlerFunc, ServiceHandlers}
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
@@ -11,12 +11,11 @@ import com.google.protobuf.util.JsonFormat
 import com.google.protobuf.{InvalidProtocolBufferException, Message, MessageOrBuilder}
 import com.typesafe.scalalogging.StrictLogging
 import io.grpc.MethodDescriptor.PrototypeMarshaller
-import io.grpc.stub.AbstractStub
 import io.grpc._
+import io.grpc.stub.AbstractStub
 
-import scala.jdk.CollectionConverters._
 import scala.concurrent.ExecutionContext
-import scala.language.{existentials, higherKinds}
+import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with StrictLogging {
@@ -25,8 +24,9 @@ private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with Stri
     JsonFormat.printer().includingDefaultValueFields().omittingInsignificantWhitespace()
   }
 
-  def createServiceHandlers[F[_]](ec: ExecutionContext)(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(
-      implicit F: Async[F]): Map[GrpcMethodName, HandlerFunc[F]] = {
+  def createServiceHandlers[F[_]](
+      ec: ExecutionContext
+  )(inProcessChannel: ManagedChannel)(ssd: ServerServiceDefinition)(implicit F: Async[F]): Map[GrpcMethodName, HandlerFunc[F]] = {
     val futureStubCtor = createFutureStubCtor(ssd.getServiceDescriptor, inProcessChannel)
     ssd.getMethods.asScala
       .filter(ReflectionGrpcJsonBridge.isSupportedMethod)
@@ -38,12 +38,12 @@ private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with Stri
     val serviceClassName = sd.getSchemaDescriptor.getClass.getName.split("\\$").head
     logger.debug(s"Creating instance of $serviceClassName")
     val method = Class.forName(serviceClassName).getDeclaredMethod("newFutureStub", classOf[Channel])
-    () =>
-      method.invoke(null, inProcessChannel).asInstanceOf[AbstractStub[_]]
+    () => method.invoke(null, inProcessChannel).asInstanceOf[AbstractStub[_]]
   }
 
-  private def createHandler[F[_]](ec: ExecutionContext)(futureStubCtor: () => AbstractStub[_])(method: ServerMethodDefinition[_, _])(
-      implicit F: Async[F]): (GrpcMethodName, HandlerFunc[F]) = {
+  private def createHandler[F[_]](
+      ec: ExecutionContext
+  )(futureStubCtor: () => AbstractStub[_])(method: ServerMethodDefinition[_, _])(implicit F: Async[F]): (GrpcMethodName, HandlerFunc[F]) = {
     val requestMessagePrototype = getRequestMessagePrototype(method)
     val javaMethod = futureStubCtor().getClass
       .getDeclaredMethod(getJavaMethodName(method), requestMessagePrototype.getClass)
@@ -62,8 +62,9 @@ private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with Stri
     methodName.substring(0, 1).toLowerCase + methodName.substring(1)
   }
 
-  private def coreHandler[F[_]](requestMessagePrototype: Message, execute: (Message, Map[String, String]) => F[MessageOrBuilder])(
-      implicit F: Async[F]): HandlerFunc[F] = { (json, headers) =>
+  private def coreHandler[F[_]](requestMessagePrototype: Message, execute: (Message, Map[String, String]) => F[MessageOrBuilder])(implicit
+      F: Async[F]
+  ): HandlerFunc[F] = { (json, headers) =>
     {
       parseRequest(json, requestMessagePrototype) match {
         case Right(req) =>
@@ -86,9 +87,11 @@ private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with Stri
     }
   }
 
-  private def executeRequest[F[_]](ec: ExecutionContext)(futureStubCtor: () => AbstractStub[_], javaMethod: Method)(
-      req: Message,
-      headers: Map[String, String])(implicit F: Async[F]): F[MessageOrBuilder] = {
+  private def executeRequest[F[_]](
+      ec: ExecutionContext
+  )(futureStubCtor: () => AbstractStub[_], javaMethod: Method)(req: Message, headers: Map[String, String])(implicit
+      F: Async[F]
+  ): F[MessageOrBuilder] = {
     val metaData = {
       val md = new Metadata()
       headers.foreach { case (k, v) => md.put(Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER), v) }
@@ -107,13 +110,17 @@ private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with Stri
       requestBuilder.build()
     }
 
-  private def fromListenableFuture[F[_], A](ec: ExecutionContext)(flf: F[ListenableFuture[A]])(implicit F: Async[F]): F[A] = flf.flatMap {
-    lf =>
+  private def fromListenableFuture[F[_], A](ec: ExecutionContext)(flf: F[ListenableFuture[A]])(implicit F: Async[F]): F[A] =
+    flf.flatMap { lf =>
       F.async { cb =>
-        Futures.addCallback(lf, new FutureCallback[A] {
-          def onFailure(t: Throwable): Unit = cb(Left(t))
-          def onSuccess(result: A): Unit = cb(Right(result))
-        }, ec.execute(_))
+        Futures.addCallback(
+          lf,
+          new FutureCallback[A] {
+            def onFailure(t: Throwable): Unit = cb(Left(t))
+            def onSuccess(result: A): Unit = cb(Right(result))
+          },
+          ec.execute(_)
+        )
       }
-  }
+    }
 }

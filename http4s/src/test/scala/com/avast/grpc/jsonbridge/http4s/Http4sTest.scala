@@ -7,11 +7,11 @@ import io.grpc.ServerServiceDefinition
 import org.http4s.headers.{`Content-Length`, `Content-Type`}
 import org.http4s.{Charset, Header, Headers, MediaType, Method, Request, Uri}
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.funsuite.AnyFunSuite
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
-import org.scalatest.funsuite.AnyFunSuite
 
 class Http4sTest extends AnyFunSuite with ScalaFutures {
 
@@ -45,7 +45,8 @@ class Http4sTest extends AnyFunSuite with ScalaFutures {
       Headers.of(
         `Content-Type`(MediaType.application.json),
         `Content-Length`.fromLong(9).getOrElse(fail())
-      ))(response.headers)
+      )
+    )(response.headers)
   }
 
   test("path prefix") {
@@ -68,7 +69,8 @@ class Http4sTest extends AnyFunSuite with ScalaFutures {
       Headers.of(
         `Content-Type`(MediaType.application.json),
         `Content-Length`.fromLong(9).getOrElse(fail())
-      ))(response.headers)
+      )
+    )(response.headers)
   }
 
   test("bad request after wrong request") {
