@@ -29,13 +29,12 @@ object AkkaHttp extends SprayJsonSupport with DefaultJsonProtocol with LazyLoggi
   def apply[F[_]: Effect](configuration: Configuration)(bridge: GrpcJsonBridge[F]): Route = {
 
     val pathPattern = configuration.pathPrefix
-      .map {
-        case NonEmptyList(head, tail) =>
-          val rest = if (tail.nonEmpty) {
-            tail.foldLeft[PathMatcher[Unit]](Neutral)(_ / _)
-          } else Neutral
+      .map { case NonEmptyList(head, tail) =>
+        val rest = if (tail.nonEmpty) {
+          tail.foldLeft[PathMatcher[Unit]](Neutral)(_ / _)
+        } else Neutral
 
-          head ~ rest
+        head ~ rest
       }
       .map(_ / Segment / Segment)
       .getOrElse(Segment / Segment)

@@ -63,8 +63,8 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
             None
         }
       })
-      .collectFirst {
-        case Some(c) => c
+      .collectFirst { case Some(c) =>
+        c
       }
       .getOrElse(sys.error(s"Classes cannot be loaded: ${serviceCompanionClassNames.mkString(", ")}"))
     val serviceCompanion = serviceCompanionClass.getDeclaredField("MODULE$").get(null)
