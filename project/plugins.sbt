@@ -1,7 +1,7 @@
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.2")
 addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.9.20")
 addSbtPlugin("ch.epfl.scala" % "sbt-missinglink" % "0.3.1")
-addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.7.0")
+addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.8.0")
 addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.1.13")
 addSbtPlugin("com.timushev.sbt" % "sbt-rewarn" % "0.1.0")
 addSbtPlugin("com.geirsson" % "sbt-ci-release" % "1.5.3")
