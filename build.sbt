@@ -66,7 +66,7 @@ lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "org.scala-lang.modules" %% "scala-collection-compat" % "2.2.0",
     "javax.annotation" % "javax.annotation-api" % "1.3.2",
-    "junit" % "junit" % "4.13" % Test,
+    "junit" % "junit" % "4.13.1" % Test,
     "org.scalatest" %% "scalatest" % "3.2.2" % Test,
     "com.novocode" % "junit-interface" % "0.11" % Test, // Required by sbt to execute JUnit tests
     "ch.qos.logback" % "logback-classic" % "1.2.3" % Test
@@ -151,7 +151,7 @@ lazy val coreScalaPB = (project in file("core-scalapb"))
     libraryDependencies ++= Seq(
       "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
       "com.thesamet.scalapb" %% "scalapb-json4s" % "0.10.1",
-      "junit" % "junit" % "4.13" % Test,
+      "junit" % "junit" % "4.13.1" % Test,
       "org.scalatest" %% "scalatest" % "3.2.2" % Test,
       "com.novocode" % "junit-interface" % "0.11" % Test, // Required by sbt to execute JUnit tests
       "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
