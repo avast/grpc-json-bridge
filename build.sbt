@@ -61,7 +61,7 @@ lazy val commonSettings = Seq(
   ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
   ThisBuild / scalafixDependencies ++= List(
     "com.github.liancheng" %% "organize-imports" % "0.4.3",
-    "com.github.vovapolu" %% "scaluzzi" % "0.1.14"
+    "com.github.vovapolu" %% "scaluzzi" % "0.1.15"
   ),
   libraryDependencies ++= Seq(
     "org.scala-lang.modules" %% "scala-collection-compat" % "2.2.0",
