@@ -64,7 +64,7 @@ lazy val commonSettings = Seq(
     "com.github.vovapolu" %% "scaluzzi" % "0.1.16"
   ),
   libraryDependencies ++= Seq(
-    "org.scala-lang.modules" %% "scala-collection-compat" % "2.3.0",
+    "org.scala-lang.modules" %% "scala-collection-compat" % "2.3.1",
     "javax.annotation" % "javax.annotation-api" % "1.3.2",
     "junit" % "junit" % "4.13.1" % Test,
     "org.scalatest" %% "scalatest" % "3.2.3" % Test,
