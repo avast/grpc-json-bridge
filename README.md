@@ -1,6 +1,5 @@
 # gRPC JSON Bridge
 
-[![Build Status](https://travis-ci.org/avast/grpc-json-bridge.svg?branch=master)](https://travis-ci.org/avast/grpc-json-bridge)
 [![Build Status][Badge-GitHubActions]][Link-GitHubActions]
 [![Release Artifacts][Badge-SonatypeReleases]][Link-SonatypeReleases]
 [![Snapshot Artifacts][Badge-SonatypeSnapshots]][Link-SonatypeSnapshots]

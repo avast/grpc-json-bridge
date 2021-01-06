@@ -4,12 +4,23 @@ pull_request_rules:
       - author=scala-steward
     actions:
       label:
-        add: [dependency-update]
+        add: ["type: dependencies"]
   - name: merge Scala Steward's PRs
     conditions:
       - base=master
       - author=scala-steward
-      - status-success=continuous-integration/travis-ci/pr
+      - status-success=ci
     actions:
       merge:
         method: squash
+  - name: automatic merge for master when CI passes
+    conditions:
+      - base=master
+      - label=mergify-merge
+      - "#approved-reviews-by>=1"
+      - status-success=ci
+    actions:
+      merge:
+        method: squash
+      delete_head_branch:
+        force: true
