@@ -85,7 +85,7 @@ lazy val commonSettings = Seq(
   addCommandAlias("fix", "; compile:scalafix; test:scalafix; scalafmtSbt; scalafmtAll")
 
 lazy val grpcTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufConfigSettings) ++ Seq(
-  PB.protocVersion := "-v391",
+  PB.protocVersion := "3.9.1",
   grpcExePath := xsbti.api.SafeLazy.strict {
     val exe: File = (baseDirectory in Test).value / ".bin" / grpcExeFileName
     if (!exe.exists) {
@@ -108,7 +108,7 @@ lazy val grpcTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufCon
 )
 
 lazy val grpcScalaPBTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufConfigSettings) ++ Seq(
-  PB.protocVersion := "-v391",
+  PB.protocVersion := "3.9.1",
   PB.targets in Test := Seq(
     scalapb.gen() -> (sourceManaged in Test).value
   )
