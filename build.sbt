@@ -185,7 +185,7 @@ lazy val akkaHttp = (project in file("akka-http"))
       "com.typesafe.akka" %% "akka-http" % Versions.akkaHttp,
       "com.typesafe.akka" %% "akka-http-spray-json" % Versions.akkaHttp,
       "com.typesafe.akka" %% "akka-stream" % "2.6.11",
-      "com.typesafe.akka" %% "akka-testkit" % "2.6.11" % Test,
+      "com.typesafe.akka" %% "akka-testkit" % "2.6.12" % Test,
       "com.typesafe.akka" %% "akka-http-testkit" % Versions.akkaHttp % Test
     )
   )
