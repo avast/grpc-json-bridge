@@ -134,7 +134,7 @@ lazy val core = (project in file("core")).settings(
     "io.grpc" % "grpc-core" % Versions.grpcVersion,
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
-    "org.typelevel" %% "cats-core" % "2.4.1",
+    "org.typelevel" %% "cats-core" % "2.4.2",
     "org.typelevel" %% "cats-effect" % "2.3.1",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
     "org.slf4j" % "jul-to-slf4j" % "1.7.30",
