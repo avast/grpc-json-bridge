@@ -94,7 +94,7 @@ object AkkaHttp extends SprayJsonSupport with DefaultJsonProtocol with LazyLoggi
                     respondWithHeader(JsonContentType) {
                       complete(StatusCodes.InternalServerError, BridgeErrorResponse.fromException(message, er))
                     }
-                  case Failure(e) => throw e
+                  case Failure(e) => throw e // scalafix:ok
                 }
               }
             case Some(c) =>
