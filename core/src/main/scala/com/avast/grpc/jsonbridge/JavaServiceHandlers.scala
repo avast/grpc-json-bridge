@@ -112,7 +112,7 @@ private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with Stri
 
   private def fromListenableFuture[F[_], A](ec: ExecutionContext)(flf: F[ListenableFuture[A]])(implicit F: Async[F]): F[A] =
     flf.flatMap { lf =>
-      F.async { cb =>
+      F.async_ { cb =>
         Futures.addCallback(
           lf,
           new FutureCallback[A] {
