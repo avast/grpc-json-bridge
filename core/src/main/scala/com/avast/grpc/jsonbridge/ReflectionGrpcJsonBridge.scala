@@ -35,7 +35,7 @@ private[jsonbridge] class ReflectionGrpcJsonBridge(serviceHandlers: ServiceHandl
       ec: ExecutionContext
   )(services: ServerServiceDefinition*)(implicit F: Async[F]): Resource[F, GrpcJsonBridge[F]] = {
     for {
-      inProcessServiceName <- Resource.liftF(F.delay { s"ReflectionGrpcJsonBridge-${System.nanoTime()}" })
+      inProcessServiceName <- Resource.eval(F.delay { s"ReflectionGrpcJsonBridge-${System.nanoTime()}" })
       inProcessServer <- createInProcessServer(ec)(inProcessServiceName, services)
       inProcessChannel <- createInProcessChannel(ec)(inProcessServiceName)
       handlersPerMethod =

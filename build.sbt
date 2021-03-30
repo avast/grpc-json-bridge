@@ -5,16 +5,16 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 val logger: Logger = ConsoleLogger()
 
 lazy val ScalaVersions = new {
-  val V213 = "2.13.3"
-  val V212 = "2.12.12"
+  val V213 = "2.13.4"
+  val V212 = "2.12.13"
 }
 
 lazy val Versions = new {
   val gpb3Version = "3.11.1"
-  val grpcVersion = "1.35.0"
+  val grpcVersion = "1.36.1"
   val circeVersion = "0.13.0"
-  val http4sVersion = "0.21.16"
-  val akkaHttp = "10.2.3"
+  val http4sVersion = "0.21.21"
+  val akkaHttp = "10.2.4"
 }
 
 lazy val javaSettings = Seq(
@@ -60,14 +60,14 @@ lazy val commonSettings = Seq(
   semanticdbVersion := scalafixSemanticdb.revision, // use Scalafix compatible version
   ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
   ThisBuild / scalafixDependencies ++= List(
-    "com.github.liancheng" %% "organize-imports" % "0.4.4",
-    "com.github.vovapolu" %% "scaluzzi" % "0.1.17"
+    "com.github.liancheng" %% "organize-imports" % "0.5.0",
+    "com.github.vovapolu" %% "scaluzzi" % "0.1.18"
   ),
   libraryDependencies ++= Seq(
-    "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.1",
+    "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.3",
     "javax.annotation" % "javax.annotation-api" % "1.3.2",
-    "junit" % "junit" % "4.13.1" % Test,
-    "org.scalatest" %% "scalatest" % "3.2.3" % Test,
+    "junit" % "junit" % "4.13.2" % Test,
+    "org.scalatest" %% "scalatest" % "3.2.6" % Test,
     "com.novocode" % "junit-interface" % "0.11" % Test, // Required by sbt to execute JUnit tests
     "ch.qos.logback" % "logback-classic" % "1.2.3" % Test
   ),
@@ -134,9 +134,9 @@ lazy val core = (project in file("core")).settings(
     "io.grpc" % "grpc-core" % Versions.grpcVersion,
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
-    "org.typelevel" %% "cats-core" % "2.3.1",
-    "org.typelevel" %% "cats-effect" % "2.3.1",
-    "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
+    "org.typelevel" %% "cats-core" % "2.5.0",
+    "org.typelevel" %% "cats-effect" % "2.4.1",
+    "com.typesafe.scala-logging" %% "scala-logging" % "3.9.3",
     "org.slf4j" % "jul-to-slf4j" % "1.7.30",
     "org.slf4j" % "jcl-over-slf4j" % "1.7.30",
     "io.grpc" % "grpc-services" % Versions.grpcVersion % Test
@@ -150,9 +150,9 @@ lazy val coreScalaPB = (project in file("core-scalapb"))
     grpcScalaPBTestGenSettings,
     libraryDependencies ++= Seq(
       "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
-      "com.thesamet.scalapb" %% "scalapb-json4s" % "0.10.3",
-      "junit" % "junit" % "4.13.1" % Test,
-      "org.scalatest" %% "scalatest" % "3.2.3" % Test,
+      "com.thesamet.scalapb" %% "scalapb-json4s" % "0.11.0",
+      "junit" % "junit" % "4.13.2" % Test,
+      "org.scalatest" %% "scalatest" % "3.2.6" % Test,
       "com.novocode" % "junit-interface" % "0.11" % Test, // Required by sbt to execute JUnit tests
       "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
       "io.grpc" % "grpc-services" % Versions.grpcVersion % Test,
@@ -184,8 +184,8 @@ lazy val akkaHttp = (project in file("akka-http"))
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-http" % Versions.akkaHttp,
       "com.typesafe.akka" %% "akka-http-spray-json" % Versions.akkaHttp,
-      "com.typesafe.akka" %% "akka-stream" % "2.6.11",
-      "com.typesafe.akka" %% "akka-testkit" % "2.6.12" % Test,
+      "com.typesafe.akka" %% "akka-stream" % "2.6.13",
+      "com.typesafe.akka" %% "akka-testkit" % "2.6.13" % Test,
       "com.typesafe.akka" %% "akka-http-testkit" % Versions.akkaHttp % Test
     )
   )

@@ -45,7 +45,7 @@ object Http4s extends LazyLogging {
 
       case request @ POST -> `pathPrefix` / serviceName / methodName =>
         val headers = request.headers
-        headers.get(`Content-Type`.name) match {
+        (headers.get(`Content-Type`.name): @unchecked) match {
           case Some(Header(_, contentTypeValue)) =>
             `Content-Type`.parse(contentTypeValue) match {
               case Right(`Content-Type`(MediaType.application.json, _)) =>
