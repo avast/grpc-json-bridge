@@ -6,8 +6,8 @@ import com.avast.grpc.jsonbridge.scalapb.ScalaPBReflectionGrpcJsonBridge
 import com.avast.grpc.jsonbridge.scalapbtest.TestServices.TestServiceGrpc
 import com.avast.grpc.jsonbridge.{BridgeError, GrpcJsonBridge}
 import io.grpc.inprocess.InProcessServerBuilder
+import io.grpc.protobuf.services.HealthStatusManager
 import io.grpc.protobuf.services.ProtoReflectionService
-import io.grpc.services.HealthStatusManager
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.{Outcome, flatspec}
 

@@ -3,8 +3,8 @@ package com.avast.grpc.jsonbridge
 import cats.effect.IO
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import io.grpc.inprocess.InProcessServerBuilder
+import io.grpc.protobuf.services.HealthStatusManager
 import io.grpc.protobuf.services.ProtoReflectionService
-import io.grpc.services.HealthStatusManager
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.{Outcome, flatspec}
 
