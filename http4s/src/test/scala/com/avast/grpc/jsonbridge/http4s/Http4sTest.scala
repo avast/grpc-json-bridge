@@ -42,8 +42,7 @@ class Http4sTest extends AnyFunSuite with ScalaFutures {
 
     assertResult("""{"sum":3}""")(response.as[String].unsafeRunSync())
 
-    assertResult(Headers(`Content-Type`(MediaType.application.json), `Content-Length`(9))
-    )(response.headers)
+    assertResult(Headers(`Content-Type`(MediaType.application.json), `Content-Length`(9)))(response.headers)
   }
 
   test("path prefix") {
@@ -62,8 +61,7 @@ class Http4sTest extends AnyFunSuite with ScalaFutures {
 
     assertResult("""{"sum":3}""")(response.as[String].unsafeRunSync())
 
-    assertResult(Headers(`Content-Type`(MediaType.application.json), `Content-Length`(9))
-    )(response.headers)
+    assertResult(Headers(`Content-Type`(MediaType.application.json), `Content-Length`(9)))(response.headers)
   }
 
   test("bad request after wrong request") {
