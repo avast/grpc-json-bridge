@@ -8,6 +8,7 @@ import org.http4s.headers.{`Content-Length`, `Content-Type`}
 import org.http4s.{Charset, Header, Headers, MediaType, Method, Request, Uri}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funsuite.AnyFunSuite
+import org.typelevel.ci.CIString
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -41,11 +42,7 @@ class Http4sTest extends AnyFunSuite with ScalaFutures {
 
     assertResult("""{"sum":3}""")(response.as[String].unsafeRunSync())
 
-    assertResult(
-      Headers.of(
-        `Content-Type`(MediaType.application.json),
-        `Content-Length`.fromLong(9).getOrElse(fail())
-      )
+    assertResult(Headers(`Content-Type`(MediaType.application.json), `Content-Length`(9))
     )(response.headers)
   }
 
@@ -65,11 +62,7 @@ class Http4sTest extends AnyFunSuite with ScalaFutures {
 
     assertResult("""{"sum":3}""")(response.as[String].unsafeRunSync())
 
-    assertResult(
-      Headers.of(
-        `Content-Type`(MediaType.application.json),
-        `Content-Length`.fromLong(9).getOrElse(fail())
-      )
+    assertResult(Headers(`Content-Type`(MediaType.application.json), `Content-Length`(9))
     )(response.headers)
   }
 
@@ -159,7 +152,7 @@ class Http4sTest extends AnyFunSuite with ScalaFutures {
         Request[IO](
           method = Method.POST,
           uri = Uri.fromString("com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()),
-          headers = Headers.of(Header(TestServiceImpl.HeaderName, headerValue))
+          headers = Headers(Header.Raw(CIString(TestServiceImpl.HeaderName), headerValue))
         ).withEntity(""" { "a": 1, "b": 2} """)
           .withContentType(`Content-Type`(MediaType.application.json))
       )
