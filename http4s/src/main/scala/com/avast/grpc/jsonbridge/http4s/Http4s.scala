@@ -24,7 +24,7 @@ object Http4s extends LazyLogging {
     import h._
 
     val pathPrefix = configuration.pathPrefix
-      .map(_.foldLeft[Path](Root)(_ / _))
+      .map(_.foldLeft[Path](Root)(_ / Path.Segment(_)))
       .getOrElse(Root)
 
     logger.info(s"Creating HTTP4S service proxying gRPC services: ${bridge.servicesNames.mkString("[", ", ", "]")}")
@@ -45,52 +45,44 @@ object Http4s extends LazyLogging {
 
       case request @ POST -> `pathPrefix` / serviceName / methodName =>
         val headers = request.headers
-        (headers.get(`Content-Type`.name): @unchecked) match {
-          case Some(Header(_, contentTypeValue)) =>
-            `Content-Type`.parse(contentTypeValue) match {
-              case Right(`Content-Type`(MediaType.application.json, _)) =>
-                request
-                  .as[String]
-                  .flatMap { body =>
-                    val methodNameString = GrpcMethodName(serviceName, methodName)
-                    val headersString = mapHeaders(headers)
-                    bridge.invoke(methodNameString, body, headersString).flatMap {
-                      case Right(resp) =>
-                        logger.trace("Request successful: {}", resp.substring(0, 100))
-                        Ok(resp, `Content-Type`(MediaType.application.json))
-                      case Left(er) =>
-                        er match {
-                          case BridgeError.GrpcMethodNotFound =>
-                            val message = s"Method '${methodNameString.fullName}' not found"
-                            logger.debug(message)
-                            NotFound(BridgeErrorResponse.fromMessage(message))
-                          case er: BridgeError.Json =>
-                            val message = "Wrong JSON"
-                            logger.debug(message, er.t)
-                            BadRequest(BridgeErrorResponse.fromException(message, er.t))
-                          case er: BridgeError.Grpc =>
-                            val message = "gRPC error" + Option(er.s.getDescription).map(": " + _).getOrElse("")
-                            logger.trace(message, er.s.getCause)
-                            mapStatus(er.s, configuration)
-                          case er: BridgeError.Unknown =>
-                            val message = "Unknown error"
-                            logger.warn(message, er.t)
-                            InternalServerError(BridgeErrorResponse.fromException(message, er.t))
-                        }
+        headers.get[`Content-Type`] match {
+          case Some(`Content-Type`(MediaType.application.json, _)) =>
+            request
+              .as[String]
+              .flatMap { body =>
+                val methodNameString = GrpcMethodName(serviceName, methodName)
+                val headersString = mapHeaders(headers)
+                bridge.invoke(methodNameString, body, headersString).flatMap {
+                  case Right(resp) =>
+                    logger.trace("Request successful: {}", resp.substring(0, 100))
+                    Ok(resp, `Content-Type`(MediaType.application.json))
+                  case Left(er) =>
+                    er match {
+                      case BridgeError.GrpcMethodNotFound =>
+                        val message = s"Method '${methodNameString.fullName}' not found"
+                        logger.debug(message)
+                        NotFound(BridgeErrorResponse.fromMessage(message))
+                      case er: BridgeError.Json =>
+                        val message = "Wrong JSON"
+                        logger.debug(message, er.t)
+                        BadRequest(BridgeErrorResponse.fromException(message, er.t))
+                      case er: BridgeError.Grpc =>
+                        val message = "gRPC error" + Option(er.s.getDescription).map(": " + _).getOrElse("")
+                        logger.trace(message, er.s.getCause)
+                        mapStatus(er.s, configuration)
+                      case er: BridgeError.Unknown =>
+                        val message = "Unknown error"
+                        logger.warn(message, er.t)
+                        InternalServerError(BridgeErrorResponse.fromException(message, er.t))
                     }
-                  }
-              case Right(c) =>
-                val message = s"Content-Type must be '${MediaType.application.json}', it is '$c'"
-                logger.debug(message)
-                BadRequest(BridgeErrorResponse.fromMessage(message))
-              case Left(e) =>
-                val message = s"Content-Type must be '${MediaType.application.json}', cannot parse '$contentTypeValue'"
-                logger.debug(message, e)
-                BadRequest(BridgeErrorResponse.fromException(message, e))
-            }
-
+                }
+              }
+          case Some(`Content-Type`(mediaType, _)) =>
+            val message = s"Content-Type must be '${MediaType.application.json}', it is '$mediaType'"
+            logger.debug(message)
+            BadRequest(BridgeErrorResponse.fromMessage(message))
           case None =>
-            val message = s"Content-Type must be '${MediaType.application.json}'"
+            val message = s"Content-Type must be '${MediaType.application.json}', it is not specified"
             logger.debug(message)
             BadRequest(BridgeErrorResponse.fromMessage(message))
         }
@@ -102,7 +94,7 @@ object Http4s extends LazyLogging {
     }
   }
 
-  private def mapHeaders(headers: Headers): Map[String, String] = headers.toList.map(h => (h.name.value, h.value)).toMap
+  private def mapHeaders(headers: Headers): Map[String, String] = headers.headers.map(h => (h.name.toString, h.value)).toMap
 
   private def mapStatus[F[_]: Sync](s: GrpcStatus, configuration: Configuration)(implicit h: Http4sDsl[F]): F[Response[F]] = {
     import h._
