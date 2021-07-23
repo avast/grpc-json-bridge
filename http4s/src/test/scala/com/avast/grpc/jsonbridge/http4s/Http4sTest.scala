@@ -31,7 +31,7 @@ class Http4sTest extends AnyFunSuite with ScalaFutures {
       .apply(
         Request[IO](
           method = Method.POST,
-          uri = Uri.fromString("com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail())
+          uri = Uri.fromString("/com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail())
         ).withEntity(""" { "a": 1, "b": 2} """)
           .withContentType(`Content-Type`(MediaType.application.json, Charset.`UTF-8`))
       )
@@ -70,7 +70,7 @@ class Http4sTest extends AnyFunSuite with ScalaFutures {
     { // empty body
       val Some(response) = service
         .apply(
-          Request[IO](method = Method.POST, uri = Uri.fromString("com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()))
+          Request[IO](method = Method.POST, uri = Uri.fromString("/com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()))
             .withEntity("")
             .withContentType(`Content-Type`(MediaType.application.json))
         )
@@ -84,7 +84,7 @@ class Http4sTest extends AnyFunSuite with ScalaFutures {
     {
       val Some(response) = service
         .apply(
-          Request[IO](method = Method.POST, uri = Uri.fromString("com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()))
+          Request[IO](method = Method.POST, uri = Uri.fromString("/com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()))
             .withEntity(""" { "a": 1, "b": 2} """)
         )
         .value
@@ -99,7 +99,7 @@ class Http4sTest extends AnyFunSuite with ScalaFutures {
 
     val Some(response) = service
       .apply(
-        Request[IO](method = Method.POST, uri = Uri.fromString("com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()))
+        Request[IO](method = Method.POST, uri = Uri.fromString("/com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()))
           .withEntity(""" { "a": 1, "b": 2} """)
           .withContentType(`Content-Type`(MediaType.application.json))
       )
@@ -115,7 +115,7 @@ class Http4sTest extends AnyFunSuite with ScalaFutures {
 
     val Some(response) = service
       .apply(
-        Request[IO](method = Method.GET, uri = Uri.fromString("com.avast.grpc.jsonbridge.test.TestService").getOrElse(fail()))
+        Request[IO](method = Method.GET, uri = Uri.fromString("/com.avast.grpc.jsonbridge.test.TestService").getOrElse(fail()))
       )
       .value
       .unsafeRunSync()
@@ -149,7 +149,7 @@ class Http4sTest extends AnyFunSuite with ScalaFutures {
       .apply(
         Request[IO](
           method = Method.POST,
-          uri = Uri.fromString("com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()),
+          uri = Uri.fromString("/com.avast.grpc.jsonbridge.test.TestService/Add").getOrElse(fail()),
           headers = Headers(Header.Raw(CIString(TestServiceImpl.HeaderName), headerValue))
         ).withEntity(""" { "a": 1, "b": 2} """)
           .withContentType(`Content-Type`(MediaType.application.json))
