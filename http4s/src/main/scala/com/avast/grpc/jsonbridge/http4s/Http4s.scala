@@ -17,6 +17,8 @@ import org.http4s.dsl.impl.EntityResponseGenerator
 import org.http4s.headers.{`Content-Type`, `WWW-Authenticate`}
 import org.http4s.server.middleware.{CORS, CORSConfig}
 
+import scala.annotation.nowarn
+
 object Http4s extends LazyLogging {
 
   def apply[F[_]: Sync](configuration: Configuration)(bridge: GrpcJsonBridge[F]): HttpRoutes[F] = {
@@ -127,6 +129,7 @@ object Http4s extends LazyLogging {
     }
   }
 
+  @nowarn
   private implicit def grpcStatusJsonEntityEncoder[F[_]: Applicative]: EntityEncoder[F, BridgeErrorResponse] =
     jsonEncoderOf[F, BridgeErrorResponse]
 }
