@@ -14,7 +14,7 @@ lazy val Versions = new {
   val grpcVersion = "1.39.0"
   val circeVersion = "0.14.1"
   val http4sVersion = "0.22.0"
-  val akkaHttp = "10.2.4"
+  val akkaHttp = "10.2.5"
 }
 
 lazy val javaSettings = Seq(
@@ -69,7 +69,7 @@ lazy val commonSettings = Seq(
     "junit" % "junit" % "4.13.2" % Test,
     "org.scalatest" %% "scalatest" % "3.2.9" % Test,
     "com.novocode" % "junit-interface" % "0.11" % Test, // Required by sbt to execute JUnit tests
-    "ch.qos.logback" % "logback-classic" % "1.2.4" % Test
+    "ch.qos.logback" % "logback-classic" % "1.2.5" % Test
   ),
   missinglinkExcludedDependencies ++= List(
     moduleFilter(organization = "org.slf4j", name = "slf4j-api")
@@ -135,7 +135,7 @@ lazy val core = (project in file("core")).settings(
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
     "org.typelevel" %% "cats-core" % "2.6.1",
-    "org.typelevel" %% "cats-effect" % "3.2.0",
+    "org.typelevel" %% "cats-effect" % "2.5.2",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
     "org.slf4j" % "jul-to-slf4j" % "1.7.32",
     "org.slf4j" % "jcl-over-slf4j" % "1.7.32",
@@ -154,7 +154,7 @@ lazy val coreScalaPB = (project in file("core-scalapb"))
       "junit" % "junit" % "4.13.2" % Test,
       "org.scalatest" %% "scalatest" % "3.2.9" % Test,
       "com.novocode" % "junit-interface" % "0.11" % Test, // Required by sbt to execute JUnit tests
-      "ch.qos.logback" % "logback-classic" % "1.2.4" % Test,
+      "ch.qos.logback" % "logback-classic" % "1.2.5" % Test,
       "io.grpc" % "grpc-services" % Versions.grpcVersion % Test,
       "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf"
     )
