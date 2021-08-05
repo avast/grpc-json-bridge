@@ -13,8 +13,8 @@ lazy val Versions = new {
   val gpb3Version = "3.17.3"
   val grpcVersion = "1.39.0"
   val circeVersion = "0.14.1"
-  val http4sVersion = "0.23.0"
-  val akkaHttp = "10.2.5"
+  val http4sVersion = "0.22.1"
+  val akkaHttp = "10.2.6"
 }
 
 lazy val javaSettings = Seq(
@@ -135,7 +135,7 @@ lazy val core = (project in file("core")).settings(
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
     "org.typelevel" %% "cats-core" % "2.6.1",
-    "org.typelevel" %% "cats-effect" % "2.5.2",
+    "org.typelevel" %% "cats-effect" % "2.5.3",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
     "org.slf4j" % "jul-to-slf4j" % "1.7.32",
     "org.slf4j" % "jcl-over-slf4j" % "1.7.32",
