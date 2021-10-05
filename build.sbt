@@ -6,7 +6,7 @@ val logger: Logger = ConsoleLogger()
 
 lazy val ScalaVersions = new {
   val V213 = "2.13.6"
-  val V212 = "2.12.14"
+  val V212 = "2.12.15"
 }
 
 lazy val Versions = new {
