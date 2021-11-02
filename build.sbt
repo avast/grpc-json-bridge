@@ -13,8 +13,8 @@ lazy val Versions = new {
   val gpb3Version = "3.17.3"
   val grpcVersion = "1.41.0"
   val circeVersion = "0.14.1"
-  val http4sVersion = "0.22.7"
-  val akkaHttp = "10.2.6"
+  val http4sVersion = "0.22.2"
+  val akkaHttp = "10.2.7"
 }
 
 lazy val javaSettings = Seq(
@@ -67,8 +67,8 @@ lazy val commonSettings = Seq(
     "org.scala-lang.modules" %% "scala-collection-compat" % "2.5.0",
     "javax.annotation" % "javax.annotation-api" % "1.3.2",
     "junit" % "junit" % "4.13.2" % Test,
-    "org.scalatest" %% "scalatest" % "3.2.9" % Test,
-    "com.novocode" % "junit-interface" % "0.11" % Test, // Required by sbt to execute JUnit tests
+    "org.scalatest" %% "scalatest" % "3.2.10" % Test,
+    "com.github.sbt" % "junit-interface" % "0.13.2" % Test, // Required by sbt to execute JUnit tests
     "ch.qos.logback" % "logback-classic" % "1.2.6" % Test
   ),
   missinglinkExcludedDependencies ++= List(
@@ -152,8 +152,8 @@ lazy val coreScalaPB = (project in file("core-scalapb"))
       "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
       "com.thesamet.scalapb" %% "scalapb-json4s" % "0.12.0",
       "junit" % "junit" % "4.13.2" % Test,
-      "org.scalatest" %% "scalatest" % "3.2.9" % Test,
-      "com.novocode" % "junit-interface" % "0.11" % Test, // Required by sbt to execute JUnit tests
+      "org.scalatest" %% "scalatest" % "3.2.10" % Test,
+      "com.github.sbt" % "junit-interface" % "0.13.2" % Test, // Required by sbt to execute JUnit tests
       "ch.qos.logback" % "logback-classic" % "1.2.6" % Test,
       "io.grpc" % "grpc-services" % Versions.grpcVersion % Test,
       "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf"
@@ -184,8 +184,8 @@ lazy val akkaHttp = (project in file("akka-http"))
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-http" % Versions.akkaHttp,
       "com.typesafe.akka" %% "akka-http-spray-json" % Versions.akkaHttp,
-      "com.typesafe.akka" %% "akka-stream" % "2.6.16",
-      "com.typesafe.akka" %% "akka-testkit" % "2.6.16" % Test,
+      "com.typesafe.akka" %% "akka-stream" % "2.6.17",
+      "com.typesafe.akka" %% "akka-testkit" % "2.6.17" % Test,
       "com.typesafe.akka" %% "akka-http-testkit" % Versions.akkaHttp % Test
     )
   )
