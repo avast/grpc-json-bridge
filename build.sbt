@@ -60,7 +60,7 @@ lazy val commonSettings = Seq(
   semanticdbVersion := scalafixSemanticdb.revision, // use Scalafix compatible version
   ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
   ThisBuild / scalafixDependencies ++= List(
-    "com.github.liancheng" %% "organize-imports" % "0.5.0",
+    "com.github.liancheng" %% "organize-imports" % "0.6.0",
     "com.github.vovapolu" %% "scaluzzi" % "0.1.20"
   ),
   libraryDependencies ++= Seq(
