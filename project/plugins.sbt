@@ -1,4 +1,4 @@
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.3")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.4")
 addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.9.32")
 addSbtPlugin("ch.epfl.scala" % "sbt-missinglink" % "0.3.2")
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.0.1")
