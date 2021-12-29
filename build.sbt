@@ -68,7 +68,7 @@ lazy val commonSettings = Seq(
     "javax.annotation" % "javax.annotation-api" % "1.3.2",
     "junit" % "junit" % "4.13.2" % Test,
     "org.scalatest" %% "scalatest" % "3.2.10" % Test,
-    "com.github.sbt" % "junit-interface" % "0.13.2" % Test, // Required by sbt to execute JUnit tests
+    "com.github.sbt" % "junit-interface" % "0.13.3" % Test, // Required by sbt to execute JUnit tests
     "ch.qos.logback" % "logback-classic" % "1.2.10" % Test
   ),
   missinglinkExcludedDependencies ++= List(
@@ -153,7 +153,7 @@ lazy val coreScalaPB = (project in file("core-scalapb"))
       "com.thesamet.scalapb" %% "scalapb-json4s" % "0.12.0",
       "junit" % "junit" % "4.13.2" % Test,
       "org.scalatest" %% "scalatest" % "3.2.10" % Test,
-      "com.github.sbt" % "junit-interface" % "0.13.2" % Test, // Required by sbt to execute JUnit tests
+      "com.github.sbt" % "junit-interface" % "0.13.3" % Test, // Required by sbt to execute JUnit tests
       "ch.qos.logback" % "logback-classic" % "1.2.10" % Test,
       "io.grpc" % "grpc-services" % Versions.grpcVersion % Test,
       "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf"
