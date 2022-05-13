@@ -22,7 +22,7 @@ class ScalaPBReflectionGrpcJsonBridgeTest2 extends flatspec.FixtureAnyFlatSpec w
       .forName(channelName)
       .addService(TestService2Grpc.bindService(new TestServiceImpl2, global))
       .addService(ProtoReflectionService.newInstance())
-      .addService(new HealthStatusManager().getHealthService)
+      .addService(new HealthStatusManager.getHealthService)
       .build
     val (bridge, close) = ScalaPBReflectionGrpcJsonBridge.createFromServer[IO](global)(server).allocated.unsafeRunSync()
     try {

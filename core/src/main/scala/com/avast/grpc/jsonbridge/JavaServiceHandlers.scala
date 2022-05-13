@@ -93,7 +93,7 @@ private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with Stri
       F: Async[F]
   ): F[MessageOrBuilder] = {
     val metaData = {
-      val md = new Metadata()
+      val md = new Metadata
       headers.foreach { case (k, v) => md.put(Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER), v) }
       md
     }

@@ -17,9 +17,9 @@ class ReflectionGrpcJsonBridgeTest extends flatspec.FixtureAnyFlatSpec with Matc
     val channelName = InProcessServerBuilder.generateName
     val server = InProcessServerBuilder
       .forName(channelName)
-      .addService(new TestServiceImpl())
+      .addService(new TestServiceImpl)
       .addService(ProtoReflectionService.newInstance())
-      .addService(new HealthStatusManager().getHealthService)
+      .addService(new HealthStatusManager.getHealthService)
       .build
     val (bridge, close) = ReflectionGrpcJsonBridge.createFromServer[IO](global)(server).allocated.unsafeRunSync()
     try {

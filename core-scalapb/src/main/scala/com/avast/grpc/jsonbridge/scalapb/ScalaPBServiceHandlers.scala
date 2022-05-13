@@ -37,9 +37,9 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
     }
   }
 
-  private val printer = new scalapb.json4s.Printer().includingDefaultValueFields
+  private val printer = new scalapb.json4s.Printer.includingDefaultValueFields
 
-  private val parser = new scalapb.json4s.Parser()
+  private val parser = new scalapb.json4s.Parser
   private val parserMethod = parser.getClass.getDeclaredMethods
     .find(_.getName == "fromJsonString")
     .getOrElse(sys.error(s"Method 'fromJsonString' not found on ${parser.getClass}"))
@@ -116,7 +116,7 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
       scalaMethod: Method
   )(implicit ec: ExecutionContext): Future[Either[BridgeError.Narrow, String]] = {
     val metadata = {
-      val md = new Metadata()
+      val md = new Metadata
       headers.foreach { case (k, v) => md.put(Metadata.Key.of(k, Metadata.ASCII_STRING_MARSHALLER), v) }
       md
     }
