@@ -159,7 +159,7 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
 
   private def fromScalaFuture[F[_], A](ec: ExecutionContext)(fsf: F[Future[A]])(implicit F: Async[F]): F[A] =
     fsf.flatMap { sf =>
-      F.async_ { cb =>
+      F.async { cb =>
         sf.onComplete {
           case Success(r) => cb(Right(r))
           case Failure(e) => cb(Left(BridgeError.Unknown(e)))
