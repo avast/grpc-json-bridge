@@ -11,8 +11,8 @@ lazy val ScalaVersions = new {
 
 lazy val Versions = new {
   val gpb3Version = "3.17.3"
-  val grpcVersion = "1.45.0"
-  val circeVersion = "0.14.1"
+  val grpcVersion = "1.46.0"
+  val circeVersion = "0.14.2"
   val http4sVersion = "0.22.2"
   val akkaHttp = "10.2.9"
 }
@@ -64,10 +64,10 @@ lazy val commonSettings = Seq(
     "com.github.vovapolu" %% "scaluzzi" % "0.1.21"
   ),
   libraryDependencies ++= Seq(
-    "org.scala-lang.modules" %% "scala-collection-compat" % "2.6.0",
+    "org.scala-lang.modules" %% "scala-collection-compat" % "2.7.0",
     "javax.annotation" % "javax.annotation-api" % "1.3.2",
     "junit" % "junit" % "4.13.2" % Test,
-    "org.scalatest" %% "scalatest" % "3.2.11" % Test,
+    "org.scalatest" %% "scalatest" % "3.2.12" % Test,
     "com.github.sbt" % "junit-interface" % "0.13.3" % Test, // Required by sbt to execute JUnit tests
     "ch.qos.logback" % "logback-classic" % "1.2.11" % Test
   ),
@@ -135,7 +135,7 @@ lazy val core = (project in file("core")).settings(
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
     "org.typelevel" %% "cats-core" % "2.7.0",
-    "org.typelevel" %% "cats-effect" % "2.5.4",
+    "org.typelevel" %% "cats-effect" % "2.5.5",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
     "org.slf4j" % "jul-to-slf4j" % "1.7.36",
     "org.slf4j" % "jcl-over-slf4j" % "1.7.36",
@@ -152,7 +152,7 @@ lazy val coreScalaPB = (project in file("core-scalapb"))
       "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
       "com.thesamet.scalapb" %% "scalapb-json4s" % "0.12.0",
       "junit" % "junit" % "4.13.2" % Test,
-      "org.scalatest" %% "scalatest" % "3.2.11" % Test,
+      "org.scalatest" %% "scalatest" % "3.2.12" % Test,
       "com.github.sbt" % "junit-interface" % "0.13.3" % Test, // Required by sbt to execute JUnit tests
       "ch.qos.logback" % "logback-classic" % "1.2.11" % Test,
       "io.grpc" % "grpc-services" % Versions.grpcVersion % Test,
@@ -184,8 +184,8 @@ lazy val akkaHttp = (project in file("akka-http"))
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-http" % Versions.akkaHttp,
       "com.typesafe.akka" %% "akka-http-spray-json" % Versions.akkaHttp,
-      "com.typesafe.akka" %% "akka-stream" % "2.6.18",
-      "com.typesafe.akka" %% "akka-testkit" % "2.6.18" % Test,
+      "com.typesafe.akka" %% "akka-stream" % "2.6.19",
+      "com.typesafe.akka" %% "akka-testkit" % "2.6.19" % Test,
       "com.typesafe.akka" %% "akka-http-testkit" % Versions.akkaHttp % Test
     )
   )
