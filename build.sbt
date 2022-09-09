@@ -14,7 +14,7 @@ lazy val Versions = new {
   val grpcVersion = "1.57.2"
   val circeVersion = "0.14.6"
   val http4sVersion = "0.22.2"
-  val akkaHttp = "10.2.9"
+  val akkaHttp = "10.2.10"
 }
 
 lazy val javaSettings = Seq(
