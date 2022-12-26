@@ -11,7 +11,7 @@ lazy val ScalaVersions = new {
 
 lazy val Versions = new {
   val gpb3Version = "3.17.3"
-  val grpcVersion = "1.49.2"
+  val grpcVersion = "1.51.1"
   val circeVersion = "0.14.3"
   val http4sVersion = "0.22.2"
   val akkaHttp = "10.2.9"
@@ -64,12 +64,12 @@ lazy val commonSettings = Seq(
     "com.github.vovapolu" %% "scaluzzi" % "0.1.23"
   ),
   libraryDependencies ++= Seq(
-    "org.scala-lang.modules" %% "scala-collection-compat" % "2.7.0",
+    "org.scala-lang.modules" %% "scala-collection-compat" % "2.9.0",
     "javax.annotation" % "javax.annotation-api" % "1.3.2",
     "junit" % "junit" % "4.13.2" % Test,
     "org.scalatest" %% "scalatest" % "3.2.13" % Test,
     "com.github.sbt" % "junit-interface" % "0.13.3" % Test, // Required by sbt to execute JUnit tests
-    "ch.qos.logback" % "logback-classic" % "1.4.0" % Test
+    "ch.qos.logback" % "logback-classic" % "1.4.5" % Test
   ),
   missinglinkExcludedDependencies ++= List(
     moduleFilter(organization = "org.slf4j", name = "slf4j-api")
@@ -137,8 +137,8 @@ lazy val core = (project in file("core")).settings(
     "org.typelevel" %% "cats-core" % "2.9.0",
     "org.typelevel" %% "cats-effect" % "2.5.5",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
-    "org.slf4j" % "jul-to-slf4j" % "2.0.1",
-    "org.slf4j" % "jcl-over-slf4j" % "2.0.1",
+    "org.slf4j" % "jul-to-slf4j" % "2.0.5",
+    "org.slf4j" % "jcl-over-slf4j" % "2.0.5",
     "io.grpc" % "grpc-services" % Versions.grpcVersion % Test
   )
 )
@@ -154,7 +154,7 @@ lazy val coreScalaPB = (project in file("core-scalapb"))
       "junit" % "junit" % "4.13.2" % Test,
       "org.scalatest" %% "scalatest" % "3.2.13" % Test,
       "com.github.sbt" % "junit-interface" % "0.13.3" % Test, // Required by sbt to execute JUnit tests
-      "ch.qos.logback" % "logback-classic" % "1.4.0" % Test,
+      "ch.qos.logback" % "logback-classic" % "1.4.5" % Test,
       "io.grpc" % "grpc-services" % Versions.grpcVersion % Test,
       "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf"
     )
