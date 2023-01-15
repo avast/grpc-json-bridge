@@ -10,7 +10,7 @@ lazy val ScalaVersions = new {
 }
 
 lazy val Versions = new {
-  val gpb3Version = "3.21.12"
+  val gpb3Version = "3.17.3"
   val grpcVersion = "1.51.1"
   val circeVersion = "0.14.3"
   val http4sVersion = "0.22.2"
