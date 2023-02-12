@@ -12,7 +12,7 @@ lazy val ScalaVersions = new {
 lazy val Versions = new {
   val gpb3Version = "3.21.12"
   val grpcVersion = "1.52.0"
-  val circeVersion = "0.14.3"
+  val circeVersion = "0.14.4"
   val http4sVersion = "0.22.2"
   val akkaHttp = "10.2.9"
 }
@@ -150,7 +150,7 @@ lazy val coreScalaPB = (project in file("core-scalapb"))
     grpcScalaPBTestGenSettings,
     libraryDependencies ++= Seq(
       "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
-      "com.thesamet.scalapb" %% "scalapb-json4s" % "0.12.0",
+      "com.thesamet.scalapb" %% "scalapb-json4s" % "0.12.1",
       "junit" % "junit" % "4.13.2" % Test,
       "org.scalatest" %% "scalatest" % "3.2.13" % Test,
       "com.github.sbt" % "junit-interface" % "0.13.3" % Test, // Required by sbt to execute JUnit tests
