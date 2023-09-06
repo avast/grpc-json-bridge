@@ -137,8 +137,8 @@ lazy val core = (project in file("core")).settings(
     "org.typelevel" %% "cats-core" % "2.10.0",
     "org.typelevel" %% "cats-effect" % "2.5.5",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
-    "org.slf4j" % "jul-to-slf4j" % "2.0.7",
-    "org.slf4j" % "jcl-over-slf4j" % "2.0.7",
+    "org.slf4j" % "jul-to-slf4j" % "2.0.9",
+    "org.slf4j" % "jcl-over-slf4j" % "2.0.9",
     "io.grpc" % "grpc-services" % Versions.grpcVersion % Test
   )
 )
