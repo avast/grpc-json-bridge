@@ -16,8 +16,6 @@ jobs:
       - uses: olafurpg/setup-scala@v14
         with:
           java-version: adopt@1.11
-      - name: Coursier cache
-        uses: coursier/cache-action@v6
       - name: sbt ci-release ${{ github.ref }}
         run: ./sbt ci-release
         env:
