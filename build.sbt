@@ -75,7 +75,8 @@ lazy val commonSettings = Seq(
     moduleFilter(organization = "org.slf4j", name = "slf4j-api")
   ),
   mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet,
-  testOptions += Tests.Argument(TestFrameworks.JUnit)
+  testOptions += Tests.Argument(TestFrameworks.JUnit),
+  Test / tpolecatExcludeOptions += ScalacOptions.warnNonUnitStatement
 ) ++
   addCommandAlias("check", "; lint; +missinglinkCheck; +mimaReportBinaryIssues; +test") ++
   addCommandAlias(
