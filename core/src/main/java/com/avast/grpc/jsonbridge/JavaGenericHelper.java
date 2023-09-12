@@ -14,6 +14,6 @@ public class JavaGenericHelper {
      *  in this case the attachHeaders method has this generic: <T extends AbstractStub<T>>
      */
     public static AbstractStub attachHeaders(Object stub, Metadata extraHeaders) {
-        return MetadataUtils.attachHeaders((AbstractStub) stub, extraHeaders);
+        return stub.withInterceptors(newAttachHeadersInterceptor(extraHeaders));
     }
 }
