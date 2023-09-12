@@ -6,7 +6,7 @@ val logger: Logger = ConsoleLogger()
 
 lazy val ScalaVersions = new {
   val V213 = "2.13.12"
-  val V212 = "2.12.17"
+  val V212 = "2.12.18"
 }
 
 lazy val Versions = new {
@@ -75,7 +75,8 @@ lazy val commonSettings = Seq(
     moduleFilter(organization = "org.slf4j", name = "slf4j-api")
   ),
   mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet,
-  testOptions += Tests.Argument(TestFrameworks.JUnit)
+  testOptions += Tests.Argument(TestFrameworks.JUnit),
+  Test / tpolecatExcludeOptions += ScalacOptions.warnNonUnitStatement
 ) ++
   addCommandAlias("check", "; lint; +missinglinkCheck; +mimaReportBinaryIssues; +test") ++
   addCommandAlias(
