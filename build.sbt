@@ -11,7 +11,7 @@ lazy val ScalaVersions = new {
 
 lazy val Versions = new {
   val gpb3Version = "3.24.3"
-  val grpcVersion = "1.57.2"
+  val grpcVersion = "1.58.0"
   val circeVersion = "0.14.6"
   val http4sVersion = "0.22.2"
   val akkaHttp = "10.2.10"
@@ -134,6 +134,7 @@ lazy val core = (project in file("core")).settings(
     "io.grpc" % "grpc-core" % Versions.grpcVersion,
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
+    "io.grpc" % "grpc-inprocess" % Versions.grpcVersion,
     "org.typelevel" %% "cats-core" % "2.10.0",
     "org.typelevel" %% "cats-effect" % "2.5.5",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
