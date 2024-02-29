@@ -69,7 +69,7 @@ lazy val commonSettings = Seq(
     "junit" % "junit" % "4.13.2" % Test,
     "org.scalatest" %% "scalatest" % "3.2.17" % Test,
     "com.github.sbt" % "junit-interface" % "0.13.3" % Test, // Required by sbt to execute JUnit tests
-    "ch.qos.logback" % "logback-classic" % "1.5.0" % Test
+    "ch.qos.logback" % "logback-classic" % "1.5.1" % Test
   ),
   missinglinkExcludedDependencies ++= List(
     moduleFilter(organization = "org.slf4j", name = "slf4j-api")
@@ -156,7 +156,7 @@ lazy val coreScalaPB = (project in file("core-scalapb"))
       "junit" % "junit" % "4.13.2" % Test,
       "org.scalatest" %% "scalatest" % "3.2.17" % Test,
       "com.github.sbt" % "junit-interface" % "0.13.3" % Test, // Required by sbt to execute JUnit tests
-      "ch.qos.logback" % "logback-classic" % "1.5.0" % Test,
+      "ch.qos.logback" % "logback-classic" % "1.5.1" % Test,
       "io.grpc" % "grpc-services" % Versions.grpcVersion % Test,
       "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf"
     )
