@@ -1,13 +1,14 @@
 package com.avast.grpc.jsonbridge
 
 import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import io.grpc.inprocess.InProcessServerBuilder
 import io.grpc.protobuf.services.{HealthStatusManager, ProtoReflectionService}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.{Outcome, flatspec}
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext.Implicits.{global => ec}
 
 class ReflectionGrpcJsonBridgeTest extends flatspec.FixtureAnyFlatSpec with Matchers {
 
@@ -21,7 +22,7 @@ class ReflectionGrpcJsonBridgeTest extends flatspec.FixtureAnyFlatSpec with Matc
       .addService(ProtoReflectionService.newInstance())
       .addService(new HealthStatusManager().getHealthService)
       .build
-    val (bridge, close) = ReflectionGrpcJsonBridge.createFromServer[IO](global)(server).allocated.unsafeRunSync()
+    val (bridge, close) = ReflectionGrpcJsonBridge.createFromServer[IO](ec)(server).allocated.unsafeRunSync()
     try {
       test(FixtureParam(bridge))
     } finally {
@@ -31,29 +32,31 @@ class ReflectionGrpcJsonBridgeTest extends flatspec.FixtureAnyFlatSpec with Matc
   }
 
   it must "successfully call the invoke method" in { f =>
-    val Right(response) =
-      f.bridge
-        .invoke(GrpcMethodName("com.avast.grpc.jsonbridge.test.TestService/Add"), """ { "a": 1, "b": 2} """, Map.empty)
-        .unsafeRunSync()
-    response shouldBe """{"sum":3}"""
+    val response = f.bridge
+      .invoke(GrpcMethodName("com.avast.grpc.jsonbridge.test.TestService/Add"), """ { "a": 1, "b": 2} """, Map.empty)
+      .unsafeRunSync()
+    response shouldBe Right("""{"sum":3}""")
   }
 
   it must "return expected status code for missing method" in { f =>
-    val Left(status) = f.bridge.invoke(GrpcMethodName("ble/bla"), "{}", Map.empty).unsafeRunSync()
-    status shouldBe BridgeError.GrpcMethodNotFound
+    val status = f.bridge
+      .invoke(GrpcMethodName("ble/bla"), "{}", Map.empty)
+      .unsafeRunSync()
+    status shouldBe Left(BridgeError.GrpcMethodNotFound)
   }
 
   it must "return BridgeError.Json for wrongly named field" in { f =>
-    val Left(status) = f.bridge
+    val status = f.bridge
       .invoke(GrpcMethodName("com.avast.grpc.jsonbridge.test.TestService/Add"), """ { "x": 1, "b": 2} """, Map.empty)
       .unsafeRunSync()
-    status should matchPattern { case BridgeError.Json(_) => }
+    status should matchPattern { case Left(BridgeError.Json(_)) => }
   }
 
   it must "return expected status code for malformed JSON" in { f =>
-    val Left(status) =
-      f.bridge.invoke(GrpcMethodName("com.avast.grpc.jsonbridge.test.TestService/Add"), "{ble}", Map.empty).unsafeRunSync()
-    status should matchPattern { case BridgeError.Json(_) => }
+    val status = f.bridge
+      .invoke(GrpcMethodName("com.avast.grpc.jsonbridge.test.TestService/Add"), "{ble}", Map.empty)
+      .unsafeRunSync()
+    status should matchPattern { case Left(BridgeError.Json(_)) => }
   }
 
 }

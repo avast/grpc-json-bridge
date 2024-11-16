@@ -1,6 +1,7 @@
 package com.avast.grpc.jsonbridge.scalapbtest
 
 import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import com.avast.grpc.jsonbridge.scalapb.ScalaPBReflectionGrpcJsonBridge
 import com.avast.grpc.jsonbridge.scalapbtest.TestServices2.TestService2Grpc
@@ -10,7 +11,7 @@ import io.grpc.protobuf.services.{HealthStatusManager, ProtoReflectionService}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.{Outcome, flatspec}
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext.Implicits.{global => ec}
 
 class ScalaPBReflectionGrpcJsonBridgeTest2 extends flatspec.FixtureAnyFlatSpec with Matchers {
 
@@ -20,11 +21,11 @@ class ScalaPBReflectionGrpcJsonBridgeTest2 extends flatspec.FixtureAnyFlatSpec w
     val channelName = InProcessServerBuilder.generateName
     val server = InProcessServerBuilder
       .forName(channelName)
-      .addService(TestService2Grpc.bindService(new TestServiceImpl2, global))
+      .addService(TestService2Grpc.bindService(new TestServiceImpl2, ec))
       .addService(ProtoReflectionService.newInstance())
       .addService(new HealthStatusManager().getHealthService)
       .build
-    val (bridge, close) = ScalaPBReflectionGrpcJsonBridge.createFromServer[IO](global)(server).allocated.unsafeRunSync()
+    val (bridge, close) = ScalaPBReflectionGrpcJsonBridge.createFromServer[IO](ec)(server).allocated.unsafeRunSync()
     try {
       test(FixtureParam(bridge))
     } finally {
@@ -34,22 +35,22 @@ class ScalaPBReflectionGrpcJsonBridgeTest2 extends flatspec.FixtureAnyFlatSpec w
   }
 
   it must "successfully call the invoke method" in { f =>
-    val Right(response) =
-      f.bridge
-        .invoke(GrpcMethodName("com.avast.grpc.jsonbridge.scalapbtest.TestService2/Add2"), """ { "a": 1, "b": 2} """, Map.empty)
-        .unsafeRunSync()
-    response shouldBe """{"sum":3}"""
+    val response = f.bridge
+      .invoke(GrpcMethodName("com.avast.grpc.jsonbridge.scalapbtest.TestService2/Add2"), """ { "a": 1, "b": 2} """, Map.empty)
+      .unsafeRunSync()
+    response shouldBe Right("""{"sum":3}""")
   }
 
   it must "return expected status code for missing method" in { f =>
-    val Left(status) = f.bridge.invoke(GrpcMethodName("ble/bla"), "{}", Map.empty).unsafeRunSync()
-    status shouldBe BridgeError.GrpcMethodNotFound
+    val status = f.bridge.invoke(GrpcMethodName("ble/bla"), "{}", Map.empty).unsafeRunSync()
+    status shouldBe Left(BridgeError.GrpcMethodNotFound)
   }
 
   it must "return expected status code for malformed JSON" in { f =>
-    val Left(status) =
-      f.bridge.invoke(GrpcMethodName("com.avast.grpc.jsonbridge.scalapbtest.TestService2/Add2"), "{ble}", Map.empty).unsafeRunSync()
-    status should matchPattern { case BridgeError.Json(_) => }
+    val status = f.bridge
+      .invoke(GrpcMethodName("com.avast.grpc.jsonbridge.scalapbtest.TestService2/Add2"), "{ble}", Map.empty)
+      .unsafeRunSync()
+    status should matchPattern { case Left(BridgeError.Json(_)) => }
   }
 
 }

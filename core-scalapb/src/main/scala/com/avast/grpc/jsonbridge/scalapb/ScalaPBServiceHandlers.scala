@@ -3,7 +3,6 @@ package com.avast.grpc.jsonbridge.scalapb
 import java.lang.reflect.{InvocationTargetException, Method}
 
 import cats.effect.Async
-import cats.syntax.all._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import com.avast.grpc.jsonbridge.ReflectionGrpcJsonBridge.{HandlerFunc, ServiceHandlers}
 import com.avast.grpc.jsonbridge.{BridgeError, JavaGenericHelper, ReflectionGrpcJsonBridge}
@@ -19,7 +18,6 @@ import scalapb.{GeneratedMessage, GeneratedMessageCompanion}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success}
 
 private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with StrictLogging {
   def createServiceHandlers[F[_]](
@@ -99,7 +97,7 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
         case Left(e: ParseException) => F.pure(Left(BridgeError.Json(e)))
         case Left(e) => F.pure(Left(BridgeError.Unknown(e)))
         case Right(request) =>
-          fromScalaFuture(ec) {
+          F.fromFuture {
             F.delay {
               executeCore(request, headers, futureStubCtor, scalaMethod)(ec)
             }
@@ -124,7 +122,7 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
     scalaMethod
       .invoke(stubWithMetadata, request.asInstanceOf[Object])
       .asInstanceOf[scala.concurrent.Future[GeneratedMessage]]
-      .map(gm => printer.print(gm))
+      .map(gm => printer.print[GeneratedMessage](gm))
       .map(Right(_): Either[BridgeError.Narrow, String])
       .recover {
         case e: StatusException =>
@@ -157,13 +155,4 @@ private[jsonbridge] object ScalaPBServiceHandlers extends ServiceHandlers with S
     companionField.get(requestMarshaller).asInstanceOf[GeneratedMessageCompanion[_]]
   }
 
-  private def fromScalaFuture[F[_], A](ec: ExecutionContext)(fsf: F[Future[A]])(implicit F: Async[F]): F[A] =
-    fsf.flatMap { sf =>
-      F.async { cb =>
-        sf.onComplete {
-          case Success(r) => cb(Right(r))
-          case Failure(e) => cb(Left(BridgeError.Unknown(e)))
-        }(ec)
-      }
-    }
 }

@@ -21,7 +21,7 @@ import scala.util.control.NonFatal
 private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with StrictLogging {
   private val parser: JsonFormat.Parser = JsonFormat.parser()
   private val printer: JsonFormat.Printer = {
-    JsonFormat.printer().includingDefaultValueFields().omittingInsignificantWhitespace()
+    JsonFormat.printer().alwaysPrintFieldsWithNoPresence().omittingInsignificantWhitespace()
   }
 
   def createServiceHandlers[F[_]](
@@ -35,7 +35,7 @@ private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with Stri
   }
 
   private def createFutureStubCtor(sd: ServiceDescriptor, inProcessChannel: Channel): () => AbstractStub[_] = {
-    val serviceClassName = sd.getSchemaDescriptor.getClass.getName.split("\\$").head
+    val serviceClassName = sd.getSchemaDescriptor.getClass.getName.split("\\$").head // scalafix:ok
     logger.debug(s"Creating instance of $serviceClassName")
     val method = Class.forName(serviceClassName).getDeclaredMethod("newFutureStub", classOf[Channel])
     () => method.invoke(null, inProcessChannel).asInstanceOf[AbstractStub[_]]
@@ -112,7 +112,7 @@ private[jsonbridge] object JavaServiceHandlers extends ServiceHandlers with Stri
 
   private def fromListenableFuture[F[_], A](ec: ExecutionContext)(flf: F[ListenableFuture[A]])(implicit F: Async[F]): F[A] =
     flf.flatMap { lf =>
-      F.async { cb =>
+      F.async_ { cb =>
         Futures.addCallback(
           lf,
           new FutureCallback[A] {

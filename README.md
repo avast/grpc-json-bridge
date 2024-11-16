@@ -10,7 +10,7 @@ It provides an implementation-agnostic module for mapping to your favorite HTTP 
 
 [Standard GPB <-> JSON mapping](https://developers.google.com/protocol-buffers/docs/proto3#json) is used.
 
-The API is _finally tagless_ (read more e.g. [here](https://www.beyondthelines.net/programming/introduction-to-tagless-final/)) meaning it can use whatever [`F[_]: cats.effect.Effect`](https://typelevel.org/cats-effect/typeclasses/effect.html) (e.g. `cats.effect.IO`, `monix.eval.Task`).
+The API is _tagless final_ (read more e.g. [here](https://www.beyondthelines.net/programming/introduction-to-tagless-final/)) meaning it can use whatever [`F[_]: cats.effect.Effect`](https://typelevel.org/cats-effect/typeclasses/effect.html) (e.g. `cats.effect.IO`, `monix.eval.Task`).
 
 ## Usage
 

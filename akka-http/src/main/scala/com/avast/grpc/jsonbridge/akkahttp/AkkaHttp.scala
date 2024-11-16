@@ -1,14 +1,14 @@
 package com.avast.grpc.jsonbridge.akkahttp
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import akka.http.scaladsl.model.StatusCodes.ClientError
+import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller, ToResponseMarshallable}
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.`Content-Type`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatcher, Route}
 import cats.data.NonEmptyList
-import cats.effect.Effect
-import cats.effect.implicits._
+import cats.effect.Sync
+import cats.implicits._
 import com.avast.grpc.jsonbridge.GrpcJsonBridge.GrpcMethodName
 import com.avast.grpc.jsonbridge.{BridgeError, BridgeErrorResponse, GrpcJsonBridge}
 import com.typesafe.scalalogging.LazyLogging
@@ -22,11 +22,10 @@ object AkkaHttp extends SprayJsonSupport with DefaultJsonProtocol with LazyLoggi
 
   private implicit val grpcStatusJsonFormat: RootJsonFormat[BridgeErrorResponse] = jsonFormat3(BridgeErrorResponse.apply)
 
-  private[akkahttp] final val JsonContentType: `Content-Type` = `Content-Type` {
-    ContentType.WithMissingCharset(MediaType.applicationWithOpenCharset("json"))
-  }
+  private val jsonStringMarshaller: ToEntityMarshaller[String] =
+    Marshaller.stringMarshaller(MediaTypes.`application/json`)
 
-  def apply[F[_]: Effect](configuration: Configuration)(bridge: GrpcJsonBridge[F]): Route = {
+  def apply[F[_]: Sync: LiftToFuture](configuration: Configuration)(bridge: GrpcJsonBridge[F]): Route = {
 
     val pathPattern = configuration.pathPrefix
       .map { case NonEmptyList(head, tail) =>
@@ -44,71 +43,61 @@ object AkkaHttp extends SprayJsonSupport with DefaultJsonProtocol with LazyLoggi
     post {
       path(pathPattern) { (serviceName, methodName) =>
         extractRequest { request =>
-          val headers = request.headers
           request.header[`Content-Type`] match {
-            case Some(`JsonContentType`) =>
+            case Some(ct) if ct.contentType.mediaType == MediaTypes.`application/json` =>
               entity(as[String]) { body =>
                 val methodNameString = GrpcMethodName(serviceName, methodName)
-                val headersString = mapHeaders(headers)
-                val methodCall = bridge.invoke(methodNameString, body, headersString).toIO.unsafeToFuture()
+                val headersString = mapHeaders(request.headers)
+                val methodCall = LiftToFuture[F].liftF {
+                  bridge
+                    .invoke(methodNameString, body, headersString)
+                    .flatMap(Sync[F].fromEither)
+                }
+
                 onComplete(methodCall) {
-                  case Success(result) =>
-                    result match {
-                      case Right(resp) =>
-                        logger.trace("Request successful: {}", resp.substring(0, 100))
-                        respondWithHeader(JsonContentType) {
-                          complete(resp)
-                        }
-                      case Left(er) =>
-                        er match {
-                          case BridgeError.GrpcMethodNotFound =>
-                            val message = s"Method '${methodNameString.fullName}' not found"
-                            logger.debug(message)
-                            respondWithHeader(JsonContentType) {
-                              complete(StatusCodes.NotFound, BridgeErrorResponse.fromMessage(message))
-                            }
-                          case er: BridgeError.Json =>
-                            val message = "Wrong JSON"
-                            logger.debug(message, er.t)
-                            respondWithHeader(JsonContentType) {
-                              complete(StatusCodes.BadRequest, BridgeErrorResponse.fromException(message, er.t))
-                            }
-                          case er: BridgeError.Grpc =>
-                            val message = "gRPC error" + Option(er.s.getDescription).map(": " + _).getOrElse("")
-                            logger.trace(message, er.s.getCause)
-                            val (s, body) = mapStatus(er.s)
-                            respondWithHeader(JsonContentType) {
-                              complete(s, body)
-                            }
-                          case er: BridgeError.Unknown =>
-                            val message = "Unknown error"
-                            logger.warn(message, er.t)
-                            respondWithHeader(JsonContentType) {
-                              complete(StatusCodes.InternalServerError, BridgeErrorResponse.fromException(message, er.t))
-                            }
-                        }
-                    }
-                  case Failure(NonFatal(er)) =>
+                  case Success(resp) =>
+                    logger.trace("Request successful: {}", resp.substring(0, 100))
+
+                    complete(ToResponseMarshallable(resp)(jsonStringMarshaller))
+                  case Failure(BridgeError.GrpcMethodNotFound) =>
+                    val message = s"Method '${methodNameString.fullName}' not found"
+                    logger.debug(message)
+
+                    complete(StatusCodes.NotFound, BridgeErrorResponse.fromMessage(message))
+                  case Failure(er: BridgeError.Json) =>
+                    val message = "Wrong JSON"
+                    logger.debug(message, er.t)
+
+                    complete(StatusCodes.BadRequest, BridgeErrorResponse.fromException(message, er.t))
+                  case Failure(er: BridgeError.Grpc) =>
+                    val message = "gRPC error" + Option(er.s.getDescription).map(": " + _).getOrElse("")
+                    logger.trace(message, er.s.getCause)
+                    val (s, body) = mapStatus(er.s)
+
+                    complete(s, body)
+                  case Failure(er: BridgeError.Unknown) =>
+                    val message = "Unknown error"
+                    logger.warn(message, er.t)
+
+                    complete(StatusCodes.InternalServerError, BridgeErrorResponse.fromException(message, er.t))
+                  case Failure(NonFatal(ex)) =>
                     val message = "Unknown exception"
-                    logger.debug(message, er)
-                    respondWithHeader(JsonContentType) {
-                      complete(StatusCodes.InternalServerError, BridgeErrorResponse.fromException(message, er))
-                    }
+                    logger.debug(message, ex)
+
+                    complete(StatusCodes.InternalServerError, BridgeErrorResponse.fromException(message, ex))
                   case Failure(e) => throw e // scalafix:ok
                 }
               }
             case Some(c) =>
-              val message = s"Content-Type must be '$JsonContentType', it is '$c'"
+              val message = s"Content-Type must be 'application/json', it is '$c'"
               logger.debug(message)
-              respondWithHeader(JsonContentType) {
-                complete(StatusCodes.BadRequest, BridgeErrorResponse.fromMessage(message))
-              }
+
+              complete(StatusCodes.BadRequest, BridgeErrorResponse.fromMessage(message))
             case None =>
-              val message = s"Content-Type must be '$JsonContentType'"
+              val message = "Content-Type must be 'application/json'"
               logger.debug(message)
-              respondWithHeader(JsonContentType) {
-                complete(StatusCodes.BadRequest, BridgeErrorResponse.fromMessage(message))
-              }
+
+              complete(StatusCodes.BadRequest, BridgeErrorResponse.fromMessage(message))
           }
         }
       }
@@ -118,9 +107,8 @@ object AkkaHttp extends SprayJsonSupport with DefaultJsonProtocol with LazyLoggi
           case None =>
             val message = s"Service '$serviceName' not found"
             logger.debug(message)
-            respondWithHeader(JsonContentType) {
-              complete(StatusCodes.NotFound, BridgeErrorResponse.fromMessage(message))
-            }
+
+            complete(StatusCodes.NotFound, BridgeErrorResponse.fromMessage(message))
           case Some(methods) =>
             complete(methods.map(_.fullName).toList.mkString("\n"))
         }
@@ -142,7 +130,7 @@ object AkkaHttp extends SprayJsonSupport with DefaultJsonProtocol with LazyLoggi
     s.getCode match {
       case Code.OK => (StatusCodes.OK, description)
       case Code.CANCELLED =>
-        (ClientError(499)("Client Closed Request", "The operation was cancelled, typically by the caller."), description)
+        (StatusCodes.custom(499, "Client Closed Request", "The operation was cancelled, typically by the caller."), description)
       case Code.UNKNOWN => (StatusCodes.InternalServerError, description)
       case Code.INVALID_ARGUMENT => (StatusCodes.BadRequest, description)
       case Code.DEADLINE_EXCEEDED => (StatusCodes.GatewayTimeout, description)
@@ -162,7 +150,7 @@ object AkkaHttp extends SprayJsonSupport with DefaultJsonProtocol with LazyLoggi
   }
 }
 
-final case class Configuration private (pathPrefix: Option[NonEmptyList[String]])
+final case class Configuration(pathPrefix: Option[NonEmptyList[String]])
 
 object Configuration {
   val Default: Configuration = Configuration(
