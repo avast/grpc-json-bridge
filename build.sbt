@@ -1,20 +1,22 @@
-import com.typesafe.tools.mima.core._
+import com.typesafe.tools.mima.core.*
+import org.typelevel.scalacoptions.ScalacOptions
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 val logger: Logger = ConsoleLogger()
 
 lazy val ScalaVersions = new {
-  val V213 = "2.13.12"
+  val V213 = "2.13.15"
   val V212 = "2.12.18"
+  val V33 = "3.3.4"
 }
 
 lazy val Versions = new {
-  val gpb3Version = "3.25.5"
+  val gpb3Version = "4.28.3"
   val grpcVersion = "1.68.1"
   val circeVersion = "0.14.10"
-  val http4sVersion = "0.22.2"
-  val akkaHttp = "10.2.10"
+  val http4sVersion = "0.23.17"
+  val akkaHttp = "10.5.3"
 }
 
 lazy val javaSettings = Seq(
@@ -47,7 +49,7 @@ lazy val commonSettings = Seq(
     )
   ),
   ThisBuild / turbo := true,
-  scalaVersion := ScalaVersions.V213,
+  scalaVersion := ScalaVersions.V33,
   crossScalaVersions := Seq(ScalaVersions.V212, ScalaVersions.V213),
   scalacOptions --= {
     if (!sys.env.contains("CI"))
@@ -58,7 +60,6 @@ lazy val commonSettings = Seq(
   description := "Library for exposing gRPC endpoints via HTTP API",
   semanticdbEnabled := true, // enable SemanticDB
   semanticdbVersion := scalafixSemanticdb.revision, // use Scalafix compatible version
-  ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
   ThisBuild / scalafixDependencies ++= List(
     "com.github.liancheng" %% "organize-imports" % "0.6.0",
     "com.github.vovapolu" %% "scaluzzi" % "0.1.23"
@@ -67,7 +68,7 @@ lazy val commonSettings = Seq(
     "org.scala-lang.modules" %% "scala-collection-compat" % "2.12.0",
     "javax.annotation" % "javax.annotation-api" % "1.3.2",
     "junit" % "junit" % "4.13.2" % Test,
-    "org.scalatest" %% "scalatest" % "3.2.17" % Test,
+    "org.scalatest" %% "scalatest" % "3.2.19" % Test,
     "com.github.sbt" % "junit-interface" % "0.13.3" % Test, // Required by sbt to execute JUnit tests
     "ch.qos.logback" % "logback-classic" % "1.5.12" % Test
   ),
@@ -76,7 +77,10 @@ lazy val commonSettings = Seq(
   ),
   mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet,
   testOptions += Tests.Argument(TestFrameworks.JUnit),
-  Test / tpolecatExcludeOptions += ScalacOptions.warnNonUnitStatement
+  Test / tpolecatExcludeOptions ++= Set(
+    ScalacOptions.warnNonUnitStatement,
+    ScalacOptions.warnValueDiscard
+  )
 ) ++
   addCommandAlias("check", "; lint; +missinglinkCheck; +mimaReportBinaryIssues; +test") ++
   addCommandAlias(
@@ -86,9 +90,9 @@ lazy val commonSettings = Seq(
   addCommandAlias("fix", "; compile:scalafix; test:scalafix; scalafmtSbt; scalafmtAll")
 
 lazy val grpcTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufConfigSettings) ++ Seq(
-  PB.protocVersion := "3.9.1",
+  PB.protocVersion := "4.28.3",
   grpcExePath := xsbti.api.SafeLazy.strict {
-    val exe: File = (baseDirectory in Test).value / ".bin" / grpcExeFileName
+    val exe: File = (Test / baseDirectory).value / ".bin" / grpcExeFileName
     if (!exe.exists) {
       logger.info("gRPC protoc plugin (for Java) does not exist. Downloading")
       //    IO.download(grpcExeUrl, exe)
@@ -99,19 +103,19 @@ lazy val grpcTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufCon
     }
     exe
   },
-  PB.protocOptions in Test ++= Seq(
+  Test / PB.protocOptions ++= Seq(
     s"--plugin=protoc-gen-java_rpc=${grpcExePath.value.get}",
-    s"--java_rpc_out=${(sourceManaged in Test).value.getAbsolutePath}"
+    s"--java_rpc_out=${(Test / sourceManaged).value.getAbsolutePath}"
   ),
-  PB.targets in Test := Seq(
-    PB.gens.java -> (sourceManaged in Test).value
+  Test / PB.targets := Seq(
+    PB.gens.java -> (Test / sourceManaged).value
   )
 )
 
 lazy val grpcScalaPBTestGenSettings = inConfig(Test)(sbtprotoc.ProtocPlugin.protobufConfigSettings) ++ Seq(
-  PB.protocVersion := "3.9.1",
-  PB.targets in Test := Seq(
-    scalapb.gen() -> (sourceManaged in Test).value
+  PB.protocVersion := "4.28.3",
+  Test / PB.targets := Seq(
+    scalapb.gen() -> (Test / sourceManaged).value
   )
 )
 
@@ -137,10 +141,10 @@ lazy val core = (project in file("core")).settings(
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
     "io.grpc" % "grpc-inprocess" % Versions.grpcVersion,
     "org.typelevel" %% "cats-core" % "2.12.0",
-    "org.typelevel" %% "cats-effect" % "2.5.5",
+    "org.typelevel" %% "cats-effect" % "3.5.5",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
-    "org.slf4j" % "jul-to-slf4j" % "2.0.13",
-    "org.slf4j" % "jcl-over-slf4j" % "2.0.13",
+    "org.slf4j" % "jul-to-slf4j" % "2.0.16",
+    "org.slf4j" % "jcl-over-slf4j" % "2.0.16",
     "io.grpc" % "grpc-services" % Versions.grpcVersion % Test
   )
 )
@@ -154,7 +158,7 @@ lazy val coreScalaPB = (project in file("core-scalapb"))
       "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
       "com.thesamet.scalapb" %% "scalapb-json4s" % "0.12.1",
       "junit" % "junit" % "4.13.2" % Test,
-      "org.scalatest" %% "scalatest" % "3.2.17" % Test,
+      "org.scalatest" %% "scalatest" % "3.2.19" % Test,
       "com.github.sbt" % "junit-interface" % "0.13.3" % Test, // Required by sbt to execute JUnit tests
       "ch.qos.logback" % "logback-classic" % "1.5.12" % Test,
       "io.grpc" % "grpc-services" % Versions.grpcVersion % Test,
@@ -186,22 +190,24 @@ lazy val akkaHttp = (project in file("akka-http"))
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-http" % Versions.akkaHttp,
       "com.typesafe.akka" %% "akka-http-spray-json" % Versions.akkaHttp,
-      "com.typesafe.akka" %% "akka-stream" % "2.6.20",
-      "com.typesafe.akka" %% "akka-testkit" % "2.6.20" % Test,
+      "com.typesafe.akka" %% "akka-stream" % "2.8.8",
+      "com.typesafe.akka" %% "akka-testkit" % "2.8.8" % Test,
       "com.typesafe.akka" %% "akka-http-testkit" % Versions.akkaHttp % Test
     )
   )
   .dependsOn(core)
 
 def grpcExeFileName: String = {
-  val os = if (scala.util.Properties.isMac) {
-    "osx-x86_64"
-  } else if (scala.util.Properties.isWin) {
-    "windows-x86_64"
-  } else {
-    "linux-x86_64"
-  }
-  s"$grpcArtifactId-${Versions.grpcVersion}-$os.exe"
+  val os =
+    if (scala.util.Properties.isMac) "osx"
+    else if (scala.util.Properties.isWin) "windows"
+    else "linux"
+
+  val arch =
+    if (scala.util.Properties.propOrEmpty("os.arch") == "aarch64") "aarch_64"
+    else "x86_64"
+
+  s"$grpcArtifactId-${Versions.grpcVersion}-$os-$arch.exe"
 }
 
 val grpcArtifactId = "protoc-gen-grpc-java"

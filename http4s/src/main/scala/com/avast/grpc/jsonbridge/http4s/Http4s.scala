@@ -21,6 +21,15 @@ import scala.annotation.nowarn
 
 object Http4s extends LazyLogging {
 
+  private val ClientClosedRequest = Status.fromInt(499).fold(throw _, identity) // scalafix:ok
+
+  implicit def stringDecoder[F[_]: Sync]: EntityDecoder[F, String] = new EntityDecoder[F, String] {
+    override def decode(m: Media[F], strict: Boolean): DecodeResult[F, String] =
+      DecodeResult.success(m.bodyText.compile.string)
+
+    override def consumes: Set[MediaRange] = Set(MediaRange.`text/*`, MediaRange.`application/*`)
+  }
+
   def apply[F[_]: Sync](configuration: Configuration)(bridge: GrpcJsonBridge[F]): HttpRoutes[F] = {
     implicit val h: Http4sDsl[F] = Http4sDsl[F]
     import h._
@@ -100,17 +109,18 @@ object Http4s extends LazyLogging {
 
   private def mapStatus[F[_]: Sync](s: GrpcStatus, configuration: Configuration)(implicit h: Http4sDsl[F]): F[Response[F]] = {
     import h._
-    val ClientClosedRequest = Status(499, "Client Closed Request")
-    final case class ClientClosedRequestOps(status: ClientClosedRequest.type) extends EntityResponseGenerator[F, F] {
-      val liftG: F ~> F = h.liftG
-    }
 
     val description = BridgeErrorResponse.fromGrpcStatus(s)
 
     // https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
     s.getCode match {
       case Code.OK => Ok(description)
-      case Code.CANCELLED => ClientClosedRequestOps(ClientClosedRequest)(description)
+      case Code.CANCELLED =>
+        final case class ClientClosedRequestOps(status: ClientClosedRequest.type) extends EntityResponseGenerator[F, F] {
+          val liftG: F ~> F = h.liftG
+        }
+
+        ClientClosedRequestOps(ClientClosedRequest)(description)
       case Code.UNKNOWN => InternalServerError(description)
       case Code.INVALID_ARGUMENT => BadRequest(description)
       case Code.DEADLINE_EXCEEDED => GatewayTimeout(description)

@@ -11,6 +11,7 @@ import io.grpc.inprocess.{InProcessChannelBuilder, InProcessServerBuilder}
 
 import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters._
+import scala.util.Random
 
 object ReflectionGrpcJsonBridge extends ReflectionGrpcJsonBridge(JavaServiceHandlers) {
   // JSON body and headers to a response (fail status or JSON response)
@@ -35,7 +36,7 @@ private[jsonbridge] class ReflectionGrpcJsonBridge(serviceHandlers: ServiceHandl
       ec: ExecutionContext
   )(services: ServerServiceDefinition*)(implicit F: Async[F]): Resource[F, GrpcJsonBridge[F]] = {
     for {
-      inProcessServiceName <- Resource.eval(F.delay { s"ReflectionGrpcJsonBridge-${System.nanoTime()}" })
+      inProcessServiceName <- Resource.eval(F.delay { s"ReflectionGrpcJsonBridge-${Random.nextInt()}" })
       inProcessServer <- createInProcessServer(ec)(inProcessServiceName, services)
       inProcessChannel <- createInProcessChannel(ec)(inProcessServiceName)
       handlersPerMethod =
