@@ -5,7 +5,7 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 val logger: Logger = ConsoleLogger()
 
 lazy val ScalaVersions = new {
-  val V213 = "2.13.12"
+  val V213 = "2.13.16"
   val V212 = "2.12.18"
 }
 
