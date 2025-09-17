@@ -11,7 +11,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class ReflectionGrpcJsonBridgeTest extends flatspec.FixtureAnyFlatSpec with Matchers {
 
-  case class FixtureParam(bridge: GrpcJsonBridge[IO])
+  final case class FixtureParam(bridge: GrpcJsonBridge[IO])
 
   override protected def withFixture(test: OneArgTest): Outcome = {
     val channelName = InProcessServerBuilder.generateName
