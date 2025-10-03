@@ -17,5 +17,8 @@ jobs:
           distribution: temurin
           java-version: 11
           cache: sbt
+      - uses: sbt/setup-sbt@v1
       - name: sbt ci ${{ github.ref }}
-        run: ./sbt ci
+        run: sbt ci
+        env:
+          SBT_OPTS: "-Xmx2g"
