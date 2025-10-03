@@ -1,0 +1,28 @@
+name: Build
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 100
+      - name: Fetch tags
+        run: git fetch --depth=100 origin +refs/tags/*:refs/tags/*
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 11
+          cache: sbt
+      - uses: sbt/setup-sbt@v1
+      - name: sbt ci ${{ github.ref }}
+        run: sbt ci
+        env:
+          SBT_OPTS: "-Xmx2g"
