@@ -5,14 +5,14 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 val logger: Logger = ConsoleLogger()
 
 lazy val ScalaVersions = new {
-  val V213 = "2.13.12"
-  val V212 = "2.12.18"
+  val V213 = "2.13.16"
+  val V212 = "2.12.20"
 }
 
 lazy val Versions = new {
-  val gpb3Version = "3.25.4"
-  val grpcVersion = "1.65.1"
-  val circeVersion = "0.14.9"
+  val gpb3Version = "3.25.8"
+  val grpcVersion = "1.76.0"
+  val circeVersion = "0.14.15"
   val http4sVersion = "0.22.2"
   val akkaHttp = "10.2.10"
 }
@@ -64,12 +64,12 @@ lazy val commonSettings = Seq(
     "com.github.vovapolu" %% "scaluzzi" % "0.1.23"
   ),
   libraryDependencies ++= Seq(
-    "org.scala-lang.modules" %% "scala-collection-compat" % "2.12.0",
+    "org.scala-lang.modules" %% "scala-collection-compat" % "2.13.0",
     "javax.annotation" % "javax.annotation-api" % "1.3.2",
     "junit" % "junit" % "4.13.2" % Test,
-    "org.scalatest" %% "scalatest" % "3.2.17" % Test,
+    "org.scalatest" %% "scalatest" % "3.2.19" % Test,
     "com.github.sbt" % "junit-interface" % "0.13.3" % Test, // Required by sbt to execute JUnit tests
-    "ch.qos.logback" % "logback-classic" % "1.5.7" % Test
+    "ch.qos.logback" % "logback-classic" % "1.5.19" % Test
   ),
   missinglinkExcludedDependencies ++= List(
     moduleFilter(organization = "org.slf4j", name = "slf4j-api")
@@ -136,11 +136,11 @@ lazy val core = (project in file("core")).settings(
     "io.grpc" % "grpc-protobuf" % Versions.grpcVersion,
     "io.grpc" % "grpc-stub" % Versions.grpcVersion,
     "io.grpc" % "grpc-inprocess" % Versions.grpcVersion,
-    "org.typelevel" %% "cats-core" % "2.12.0",
+    "org.typelevel" %% "cats-core" % "2.13.0",
     "org.typelevel" %% "cats-effect" % "2.5.5",
-    "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
-    "org.slf4j" % "jul-to-slf4j" % "2.0.13",
-    "org.slf4j" % "jcl-over-slf4j" % "2.0.13",
+    "com.typesafe.scala-logging" %% "scala-logging" % "3.9.6",
+    "org.slf4j" % "jul-to-slf4j" % "2.0.17",
+    "org.slf4j" % "jcl-over-slf4j" % "2.0.17",
     "io.grpc" % "grpc-services" % Versions.grpcVersion % Test
   )
 )
@@ -152,11 +152,11 @@ lazy val coreScalaPB = (project in file("core-scalapb"))
     grpcScalaPBTestGenSettings,
     libraryDependencies ++= Seq(
       "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
-      "com.thesamet.scalapb" %% "scalapb-json4s" % "0.12.1",
+      "com.thesamet.scalapb" %% "scalapb-json4s" % "0.12.2",
       "junit" % "junit" % "4.13.2" % Test,
-      "org.scalatest" %% "scalatest" % "3.2.17" % Test,
+      "org.scalatest" %% "scalatest" % "3.2.19" % Test,
       "com.github.sbt" % "junit-interface" % "0.13.3" % Test, // Required by sbt to execute JUnit tests
-      "ch.qos.logback" % "logback-classic" % "1.5.7" % Test,
+      "ch.qos.logback" % "logback-classic" % "1.5.19" % Test,
       "io.grpc" % "grpc-services" % Versions.grpcVersion % Test,
       "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf"
     )

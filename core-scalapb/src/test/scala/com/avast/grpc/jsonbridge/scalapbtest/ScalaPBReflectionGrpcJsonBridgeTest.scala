@@ -6,7 +6,7 @@ import com.avast.grpc.jsonbridge.scalapb.ScalaPBReflectionGrpcJsonBridge
 import com.avast.grpc.jsonbridge.scalapbtest.TestServices.TestServiceGrpc
 import com.avast.grpc.jsonbridge.{BridgeError, GrpcJsonBridge}
 import io.grpc.inprocess.InProcessServerBuilder
-import io.grpc.protobuf.services.{HealthStatusManager, ProtoReflectionService}
+import io.grpc.protobuf.services.{HealthStatusManager, ProtoReflectionServiceV1}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.{Outcome, flatspec}
 
@@ -14,14 +14,14 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class ScalaPBReflectionGrpcJsonBridgeTest extends flatspec.FixtureAnyFlatSpec with Matchers {
 
-  case class FixtureParam(bridge: GrpcJsonBridge[IO])
+  case class FixtureParam(bridge: GrpcJsonBridge[IO]) // scalafix:ok
 
   override protected def withFixture(test: OneArgTest): Outcome = {
     val channelName = InProcessServerBuilder.generateName
     val server = InProcessServerBuilder
       .forName(channelName)
       .addService(TestServiceGrpc.bindService(new TestServiceImpl, global))
-      .addService(ProtoReflectionService.newInstance())
+      .addService(ProtoReflectionServiceV1.newInstance())
       .addService(new HealthStatusManager().getHealthService)
       .build
     val (bridge, close) = ScalaPBReflectionGrpcJsonBridge.createFromServer[IO](global)(server).allocated.unsafeRunSync()

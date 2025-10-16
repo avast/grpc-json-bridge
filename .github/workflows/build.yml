@@ -1,10 +1,15 @@
-name: Release
+name: Build
 on:
-  release:
-    types: [ published ]
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
 jobs:
-  release:
+  ci:
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
     steps:
       - uses: actions/checkout@v5
         with:
@@ -17,11 +22,7 @@ jobs:
           java-version: 11
           cache: sbt
       - uses: sbt/setup-sbt@v1
-      - name: sbt ci-release ${{ github.ref }}
-        run: sbt ci-release
+      - name: sbt ci ${{ github.ref }}
+        run: sbt ci
         env:
-          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
-          PGP_SECRET: ${{ secrets.PGP_SECRET }}
-          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           SBT_OPTS: "-Xmx2g"
